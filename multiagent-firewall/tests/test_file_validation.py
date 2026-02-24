@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import tempfile
 from pathlib import Path
+from io import BytesIO
 from multiagent_firewall.utils import (
     FileValidationError,
     validate_file_size,
@@ -12,52 +13,88 @@ from multiagent_firewall.utils import (
 )
 
 
-# Test validate_file_size
-def test_validate_file_size_within_limit():
+# Mock async file object for testing
+class MockAsyncFile:
+    """Mock async file-like object for testing streaming validation"""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.position = 0
+
+    async def read(self, size: int) -> bytes:
+        """Read up to size bytes from the data"""
+        chunk = self.data[self.position : self.position + size]
+        self.position += len(chunk)
+        return chunk
+
+
+# Test validate_file_size (async streaming)
+@pytest.mark.asyncio
+async def test_validate_file_size_within_limit():
     """Valid file size should pass without error"""
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(b"x" * 1024)  # 1 KB
-        tmp.flush()
-        tmp_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "test_file.bin"
+        mock_file = MockAsyncFile(b"x" * 1024)  # 1 KB
 
-    try:
-        validate_file_size(tmp_path, max_size_bytes=1024 * 1024)  # 1 MB limit
-    finally:
-        tmp_path.unlink()
+        file_size = await validate_file_size(
+            mock_file,
+            tmp_path,
+            max_size_bytes=1024 * 1024,  # 1 MB limit
+            chunk_size_bytes=4096,
+        )
+
+        assert file_size == 1024
+        assert tmp_path.exists()
+        assert tmp_path.stat().st_size == 1024
 
 
-def test_validate_file_size_at_exact_limit():
+@pytest.mark.asyncio
+async def test_validate_file_size_at_exact_limit():
     """File at exact size limit should pass"""
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(b"x" * (1024 * 1024))  # Exactly 1 MB
-        tmp.flush()
-        tmp_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "test_file.bin"
+        mock_file = MockAsyncFile(b"x" * (1024 * 1024))  # Exactly 1 MB
 
-    try:
-        validate_file_size(tmp_path, max_size_bytes=1024 * 1024)  # 1 MB limit
-    finally:
-        tmp_path.unlink()
+        file_size = await validate_file_size(
+            mock_file,
+            tmp_path,
+            max_size_bytes=1024 * 1024,  # 1 MB limit
+            chunk_size_bytes=4096,
+        )
+
+        assert file_size == 1024 * 1024
+        assert tmp_path.exists()
 
 
-def test_validate_file_size_exceeds_limit():
+@pytest.mark.asyncio
+async def test_validate_file_size_exceeds_limit():
     """File exceeding size limit should raise FileValidationError"""
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(b"x" * (2 * 1024 * 1024))  # 2 MB
-        tmp.flush()
-        tmp_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "test_file.bin"
+        mock_file = MockAsyncFile(b"x" * (2 * 1024 * 1024))  # 2 MB
 
-    try:
         with pytest.raises(FileValidationError, match="File size .* exceeds"):
-            validate_file_size(tmp_path, max_size_bytes=1024 * 1024)  # 1 MB limit
-    finally:
-        tmp_path.unlink()
+            await validate_file_size(
+                mock_file,
+                tmp_path,
+                max_size_bytes=1024 * 1024,  # 1 MB limit
+                chunk_size_bytes=4096,
+            )
+
+        # File should be cleaned up after error
+        assert not tmp_path.exists()
 
 
-def test_validate_file_size_nonexistent_file():
-    """Nonexistent file should raise error"""
-    fake_path = Path("/nonexistent/file.txt")
-    with pytest.raises((FileValidationError, FileNotFoundError)):
-        validate_file_size(fake_path, max_size_bytes=10 * 1024 * 1024)
+@pytest.mark.asyncio
+async def test_validate_file_size_nonexistent_file():
+    """Writing to nonexistent directory should raise error"""
+    fake_path = Path("/nonexistent/directory/file.txt")
+    mock_file = MockAsyncFile(b"x" * 1024)
+
+    with pytest.raises(FileValidationError, match="Failed to write file"):
+        await validate_file_size(
+            mock_file, fake_path, max_size_bytes=10 * 1024 * 1024, chunk_size_bytes=4096
+        )
 
 
 # Test validate_mime_type
@@ -258,15 +295,23 @@ def test_validate_path_traversal_absolute_path_outside():
 
 
 # Edge cases and integration tests
-def test_validate_file_size_empty_file():
+@pytest.mark.asyncio
+async def test_validate_file_size_empty_file():
     """Empty file should pass validation"""
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "empty_file.bin"
+        mock_file = MockAsyncFile(b"")  # Empty file
 
-    try:
-        validate_file_size(tmp_path, max_size_bytes=1024 * 1024)  # 1 MB limit
-    finally:
-        tmp_path.unlink()
+        file_size = await validate_file_size(
+            mock_file,
+            tmp_path,
+            max_size_bytes=1024 * 1024,  # 1 MB limit
+            chunk_size_bytes=4096,
+        )
+
+        assert file_size == 0
+        assert tmp_path.exists()
+        assert tmp_path.stat().st_size == 0
 
 
 def test_validate_mime_type_text_file():
@@ -291,19 +336,30 @@ def test_sanitize_filename_uniqueness():
     assert len(filenames) == 1000
 
 
-def test_full_validation_workflow():
-    """Complete workflow: create safe file, validate size, MIME, and path"""
+@pytest.mark.asyncio
+async def test_full_validation_workflow():
+    """Complete workflow: stream file, validate size, MIME, and path"""
     with tempfile.TemporaryDirectory() as tmpdir:
         allowed_dir = Path(tmpdir)
 
-        # Create a valid PNG file
+        # Create a valid PNG file via streaming
         safe_filename = sanitize_filename("upload.png")
         file_path = allowed_dir / safe_filename
 
         png_header = b"\x89PNG\r\n\x1a\n"
-        file_path.write_bytes(png_header + b"image data")
+        png_data = png_header + b"image data"
+        mock_file = MockAsyncFile(png_data)
 
-        # All validations should pass
-        validate_file_size(file_path, max_size_bytes=1024 * 1024)  # 1 MB limit
+        # Stream and validate size
+        file_size = await validate_file_size(
+            mock_file,
+            file_path,
+            max_size_bytes=1024 * 1024,  # 1 MB limit
+            chunk_size_bytes=4096,
+        )
+
+        assert file_size == len(png_data)
+
+        # Validate MIME and path
         validate_mime_type(file_path, allowed_mimes={"image/png"})
         validate_path_traversal(file_path, allowed_dir)

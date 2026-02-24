@@ -16,10 +16,6 @@ class FileTypeDefinition:
         self.parser = config["parser"]
         self.enabled = config.get("enabled", True)
 
-        # Optional category-specific limits
-        self.max_pages = config.get("max_pages")  # PDF only
-        self.max_pixels = config.get("max_pixels")  # Images only
-
     def is_extension_supported(self, ext: str) -> bool:
         """Check if file extension is supported."""
         return ext.lower() in self.extensions

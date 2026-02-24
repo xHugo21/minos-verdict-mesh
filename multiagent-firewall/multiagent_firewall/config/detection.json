@@ -4,14 +4,12 @@
       "extensions": [".pdf"],
       "mime_types": ["application/pdf"],
       "parser": "pdf",
-      "max_pages": 500,
       "enabled": true
     },
     "image": {
       "extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"],
       "mime_types": ["image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff", "image/webp"],
       "parser": "ocr",
-      "max_pixels": 10000000,
       "enabled": true
     },
     "text": {

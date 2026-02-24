@@ -9,27 +9,58 @@ from .exceptions import FileValidationError
 logger = logging.getLogger(__name__)
 
 
-def validate_file_size(
+async def validate_file_size(
+    file_obj,
     file_path: Path,
     max_size_bytes: int,
-) -> None:
+    chunk_size_bytes: int,
+) -> int:
     """
-    Validate file size doesn't exceed limit.
+    Validates file size during streaming to prevent writing
+    oversized files to disk
 
     Args:
-        file_path: Path to file to validate
+        file_obj: Async file-like object to read from (e.g., FastAPI UploadFile)
+        file_path: Destination path to write file
         max_size_bytes: Maximum allowed size in bytes
+        chunk_size_bytes: Size of chunks to read/write
+
+    Returns:
+        Total bytes written
 
     Raises:
-        FileValidationError: If file exceeds size limit
+        FileValidationError: If file exceeds size limit during streaming
     """
-    size = file_path.stat().st_size
-    if size > max_size_bytes:
-        max_mb = max_size_bytes / (1024 * 1024)
-        actual_mb = size / (1024 * 1024)
-        raise FileValidationError(
-            f"File size {actual_mb:.2f}MB exceeds limit of {max_mb:.0f}MB"
-        )
+    file_size = 0
+
+    try:
+        with open(file_path, "wb") as f:
+            while chunk := await file_obj.read(chunk_size_bytes):
+                file_size += len(chunk)
+
+                if file_size > max_size_bytes:
+                    try:
+                        file_path.unlink()
+                    except OSError:
+                        pass
+
+                    max_mb = max_size_bytes / (1024 * 1024)
+                    actual_mb = file_size / (1024 * 1024)
+                    raise FileValidationError(
+                        f"File size {actual_mb:.2f}MB exceeds limit of {max_mb:.0f}MB"
+                    )
+
+                f.write(chunk)
+    except FileValidationError:
+        raise
+    except Exception as e:
+        try:
+            file_path.unlink()
+        except OSError:
+            pass
+        raise FileValidationError(f"Failed to write file: {str(e)}") from e
+
+    return file_size
 
 
 def validate_mime_type(
@@ -97,7 +128,6 @@ def sanitize_filename(filename: str | None) -> str:
     else:
         ext = ""
 
-    # Use cryptographically secure random name
     safe_name = f"{secrets.token_hex(16)}{ext}"
     return safe_name
 

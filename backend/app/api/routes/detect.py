@@ -11,6 +11,7 @@ from multiagent_firewall.config import FILE_TYPE_CONFIG
 from multiagent_firewall.utils import (
     FileValidationError,
     sanitize_filename,
+    validate_file_size,
     validate_mime_type,
     validate_path_traversal,
 )
@@ -29,6 +30,7 @@ async def _validate_and_save_uploaded_file(
     Validate file security and save to temporary directory.
 
     - File size limits
+    - Random filename
     - Path traversal protection
     - Extension validation
     - MIME type validation
@@ -46,7 +48,6 @@ async def _validate_and_save_uploaded_file(
     """
     tmp_dir = Path(tempfile.gettempdir())
 
-    # Generate secure random filename
     safe_filename_str = sanitize_filename(file.filename)
     tmp_path = tmp_dir / safe_filename_str
 
@@ -55,27 +56,17 @@ async def _validate_and_save_uploaded_file(
     except FileValidationError as e:
         raise HTTPException(status_code=400, detail="Invalid file path")
 
-    max_size = FILE_TYPE_CONFIG.global_max_size_bytes
-    chunk_size = FILE_TYPE_CONFIG.chunk_size_bytes
-    file_size = 0
+    try:
+        file_size = await validate_file_size(
+            file,
+            tmp_path,
+            FILE_TYPE_CONFIG.global_max_size_bytes,
+            FILE_TYPE_CONFIG.chunk_size_bytes,
+        )
+    except FileValidationError as e:
+        raise HTTPException(status_code=413, detail=str(e))
 
     try:
-        with open(tmp_path, "wb") as f:
-            while chunk := await file.read(chunk_size):
-                file_size += len(chunk)
-                if file_size > max_size:
-                    try:
-                        tmp_path.unlink()
-                    except OSError:
-                        pass
-
-                    max_mb = max_size / (1024 * 1024)
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"File too large. Maximum size: {max_mb:.0f}MB",
-                    )
-                f.write(chunk)
-
         debug_log(
             f"[SensitiveDataDetectorBackend] Saved file to {tmp_path} ({file_size} bytes)"
         )

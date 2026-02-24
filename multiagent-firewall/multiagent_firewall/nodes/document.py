@@ -13,8 +13,6 @@ from ..types import GuardState
 from ..utils import (
     append_error,
     append_warning,
-    FileValidationError,
-    validate_file_size,
 )
 from ..config import FILE_TYPE_CONFIG
 
@@ -62,7 +60,7 @@ def is_image_file(file_path: str) -> bool:
 
 def read_pdf(file_path: str) -> str | None:
     """
-    Extract text from PDF file with size and page limits.
+    Extract text from PDF file.
     """
     try:
         import pdfplumber
@@ -74,29 +72,9 @@ def read_pdf(file_path: str) -> str | None:
         if not pdf_config:
             return None
 
-        # Validate file size (50MB global limit already enforced by backend)
-        # This is defense-in-depth for direct firewall usage
-        try:
-            validate_file_size(path, FILE_TYPE_CONFIG.global_max_size_bytes)
-        except FileValidationError as e:
-            logger.warning(f"PDF size validation failed: {e}")
-            return None
-
         text = ""
         with pdfplumber.open(file_path) as pdf:
-            total_pages = len(pdf.pages)
-
-            # Check page count limit
-            if pdf_config.max_pages and total_pages > pdf_config.max_pages:
-                logger.warning(
-                    f"PDF has {total_pages} pages, exceeding limit of {pdf_config.max_pages}. "
-                    f"Processing first {pdf_config.max_pages} pages only."
-                )
-                max_pages = pdf_config.max_pages
-            else:
-                max_pages = total_pages
-
-            for page in pdf.pages[:max_pages]:
+            for page in pdf.pages:
                 extracted_text = page.extract_text()
                 if extracted_text:
                     text += extracted_text + "\n"
