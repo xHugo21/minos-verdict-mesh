@@ -144,10 +144,7 @@
 
       // Show loading state
       sg.loadingState.show({
-        message:
-          files.length > 1
-            ? "Analyzing files..."
-            : "Analyzing file...",
+        message: files.length > 1 ? "Analyzing files..." : "Analyzing file...",
       });
       loadingShown = true;
 
@@ -228,7 +225,6 @@
         err,
       );
 
-      // Show error to user (backend will return error for unsupported file types)
       sg.panel.render(
         {
           risk_level: "unknown",
