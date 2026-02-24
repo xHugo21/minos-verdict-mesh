@@ -1,17 +1,8 @@
 {
   "file_types": {
-    "pdf": {
-      "extensions": [".pdf"],
-      "mime_types": ["application/pdf"]
-    },
-    "image": {
-      "extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"],
-      "mime_types": ["image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff", "image/webp"]
-    },
-    "text": {
-      "extensions": [".txt", ".md", ".csv", ".js", ".py", ".java", ".cpp", ".c", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sh", ".sql"],
-      "mime_types": ["text/plain", "text/markdown", "text/csv", "application/json", "application/xml", "text/x-python", "text/javascript"]
-    }
+    "pdf": [".pdf"],
+    "image": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"],
+    "text": [".txt", ".md", ".csv", ".js", ".py", ".java", ".cpp", ".c", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sh", ".sql"]
   },
   "file_validation": {
     "global_max_size_mb": 50,

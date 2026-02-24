@@ -2,17 +2,51 @@
 
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 from typing import Any
+
+# MIME type overrides for extensions that Python's mimetypes library doesn't know
+MIME_OVERRIDES = {
+    ".webp": "image/webp",
+    ".yaml": "text/yaml",
+    ".yml": "text/yaml",
+}
 
 
 class FileTypeDefinition:
     """Represents a file type category."""
 
-    def __init__(self, category: str, config: dict[str, Any]):
+    def __init__(self, category: str, extensions: list[str]):
         self.category = category
-        self.extensions = set(config["extensions"])
-        self.mime_types = set(config["mime_types"])
+        self.extensions = set(ext.lower() for ext in extensions)
+        self.mime_types = self._generate_mime_types()
+
+    def _generate_mime_types(self) -> set[str]:
+        """
+        Auto-generate MIME types from extensions using Python's mimetypes library.
+
+        Falls back to hardcoded overrides for extensions not in mimetypes database.
+        """
+        mime_set = set()
+
+        for ext in self.extensions:
+            # Check hardcoded overrides first
+            if ext in MIME_OVERRIDES:
+                mime_set.add(MIME_OVERRIDES[ext])
+                continue
+
+            # Use Python's mimetypes library to guess
+            guessed_mime, _ = mimetypes.guess_type(f"file{ext}")
+
+            if guessed_mime:
+                mime_set.add(guessed_mime)
+            else:
+                # If mimetypes doesn't know, assume text/plain for safety
+                # (most unknown extensions are text-based)
+                mime_set.add("text/plain")
+
+        return mime_set
 
     def is_extension_supported(self, ext: str) -> bool:
         """Check if file extension is supported."""
@@ -28,8 +62,10 @@ class FileTypeConfig:
 
     def __init__(self, config: dict[str, Any]):
         self.categories: dict[str, FileTypeDefinition] = {}
-        for category, cat_config in config["file_types"].items():
-            self.categories[category] = FileTypeDefinition(category, cat_config)
+
+        # New format: file_types is { "category": [".ext1", ".ext2", ...] }
+        for category, extensions in config["file_types"].items():
+            self.categories[category] = FileTypeDefinition(category, extensions)
 
         validation = config.get("file_validation", {})
         self.global_max_size_mb = validation.get("global_max_size_mb", 50)
