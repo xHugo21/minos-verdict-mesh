@@ -42,10 +42,14 @@
       throw createDetectorError("Detector unreachable", DEFAULT_ERROR_MESSAGE);
     }
     if (!resp.ok) {
-      throw createDetectorError(
-        `Detector HTTP ${resp.status}`,
-        "Analysis failed - backend error.",
-      );
+      let detailMessage = "Analysis failed - backend error.";
+      try {
+        const errorPayload = await resp.json();
+        if (errorPayload?.detail && typeof errorPayload.detail === "string") {
+          detailMessage = errorPayload.detail;
+        }
+      } catch {}
+      throw createDetectorError(`Detector HTTP ${resp.status}`, detailMessage);
     }
     let payload;
     try {

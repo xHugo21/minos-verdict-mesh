@@ -282,23 +282,41 @@
     list.innerHTML = "";
 
     const mode = meta.mode || "block";
-    const { risk_level = "unknown", detected_fields = [] } = result || {};
-    const riskLabel =
-      risk_level === "high"
-        ? "High"
-        : risk_level === "medium"
-          ? "Medium"
-          : risk_level === "low"
-            ? "Low"
-            : "Unknown";
+    const {
+      risk_level = "unknown",
+      detected_fields = [],
+      error = "",
+    } = result || {};
 
-    title.textContent = `⚠️ ${riskLabel} Risk Detected`;
+    let titleText;
+    if (error) {
+      titleText = "⚠️ Analysis Error";
+    } else {
+      const riskLabel =
+        risk_level === "high"
+          ? "High"
+          : risk_level === "medium"
+            ? "Medium"
+            : risk_level === "low"
+              ? "Low"
+              : "Unknown";
+      titleText = `⚠️ ${riskLabel} Risk Detected`;
+    }
+
+    title.textContent = titleText;
 
     const baseText = contextText || "";
 
-    // Display remediation message from backend
+    // Display error message if present (takes precedence over remediation)
     const remediation = result?.remediation || "";
-    policy.innerHTML = remediation ? `<div>${remediation}</div>` : "";
+
+    if (error) {
+      policy.innerHTML = `<div style="color: #ffa8a8; font-weight: 500;">${error}</div>`;
+    } else if (remediation) {
+      policy.innerHTML = `<div>${remediation}</div>`;
+    } else {
+      policy.innerHTML = "";
+    }
 
     // Show timing if provided
     const durationMs = meta?.durationMs;

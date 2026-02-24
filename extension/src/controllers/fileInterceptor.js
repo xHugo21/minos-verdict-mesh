@@ -225,11 +225,13 @@
         err,
       );
 
+      const errorMessage = err.displayMessage || err.message || "Unknown error";
+
       sg.panel.render(
         {
           risk_level: "unknown",
           detected_fields: [],
-          error: `Failed to analyze file: ${err.message}`,
+          error: errorMessage,
         },
         fallbackFile ? fallbackFile.name : "File upload",
         {
