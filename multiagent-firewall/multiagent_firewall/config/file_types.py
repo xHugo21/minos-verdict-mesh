@@ -14,7 +14,6 @@ class FileTypeDefinition:
         self.extensions = set(config["extensions"])
         self.mime_types = set(config["mime_types"])
         self.parser = config["parser"]
-        self.enabled = config.get("enabled", True)
 
     def is_extension_supported(self, ext: str) -> bool:
         """Check if file extension is supported."""
@@ -42,14 +41,14 @@ class FileTypeConfig:
         """Get file type definition by filename extension."""
         ext = Path(filename).suffix.lower()
         for category in self.categories.values():
-            if category.enabled and category.is_extension_supported(ext):
+            if category.is_extension_supported(ext):
                 return category
         return None
 
     def get_by_mime(self, mime_type: str) -> FileTypeDefinition | None:
         """Get file type definition by MIME type."""
         for category in self.categories.values():
-            if category.enabled and category.is_mime_supported(mime_type):
+            if category.is_mime_supported(mime_type):
                 return category
         return None
 
@@ -65,18 +64,16 @@ class FileTypeConfig:
 
     @property
     def all_supported_extensions(self) -> set[str]:
-        """Get all enabled extensions across all categories."""
+        """Get all supported extensions across all categories."""
         extensions = set()
         for category in self.categories.values():
-            if category.enabled:
-                extensions.update(category.extensions)
+            extensions.update(category.extensions)
         return extensions
 
     @property
     def all_supported_mimes(self) -> set[str]:
-        """Get all enabled MIME types across all categories."""
+        """Get all supported MIME types across all categories."""
         mimes = set()
         for category in self.categories.values():
-            if category.enabled:
-                mimes.update(category.mime_types)
+            mimes.update(category.mime_types)
         return mimes

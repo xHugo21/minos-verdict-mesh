@@ -3,26 +3,22 @@
     "pdf": {
       "extensions": [".pdf"],
       "mime_types": ["application/pdf"],
-      "parser": "pdf",
-      "enabled": true
+      "parser": "pdf"
     },
     "image": {
       "extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"],
       "mime_types": ["image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff", "image/webp"],
-      "parser": "ocr",
-      "enabled": true
+      "parser": "ocr"
     },
     "text": {
       "extensions": [".txt", ".md", ".csv"],
       "mime_types": ["text/plain", "text/markdown", "text/csv"],
-      "parser": "text",
-      "enabled": true
+      "parser": "text"
     },
     "code": {
       "extensions": [".js", ".py", ".java", ".cpp", ".c", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sh", ".sql"],
       "mime_types": ["text/plain", "application/json", "application/xml", "text/x-python", "text/javascript"],
-      "parser": "text",
-      "enabled": true
+      "parser": "text"
     }
   },
   "file_validation": {

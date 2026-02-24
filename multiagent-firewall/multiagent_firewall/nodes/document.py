@@ -53,7 +53,7 @@ def is_image_file(file_path: str) -> bool:
     Check if file is an image using FileTypeConfig.
     """
     image_config = FILE_TYPE_CONFIG.categories.get("image")
-    if not image_config or not image_config.enabled:
+    if not image_config:
         return False
     return image_config.is_extension_supported(Path(file_path).suffix)
 
