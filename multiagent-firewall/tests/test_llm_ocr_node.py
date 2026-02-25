@@ -119,10 +119,10 @@ def test_llm_ocr_document_appends_to_existing_text(mock_ocr_detector, guard_conf
 
     result = llm_ocr_document(state, fw_config=guard_config)
 
-    # Should append to existing text
+    # Should append to existing text with single space separator
     assert "Existing content" in result["raw_text"]
     assert "New text from LLM" in result["raw_text"]
-    assert result["raw_text"] == "Existing content\n\nNew text from LLM"
+    assert result["raw_text"] == "Existing content New text from LLM"
 
 
 @patch("multiagent_firewall.nodes.document.LLMOCRDetector")
