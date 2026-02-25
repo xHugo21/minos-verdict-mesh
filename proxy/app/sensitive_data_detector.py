@@ -57,7 +57,6 @@ class SensitiveDataDetector:
 
             content = msg.get("content")
 
-            # OpenAI/GPT-4 Vision format: content can be array
             if isinstance(content, list):
                 for item in content:
                     if not isinstance(item, dict):
@@ -132,55 +131,53 @@ class SensitiveDataDetector:
 
         return images
 
-    def _ask_backend_with_file(
-        self, text: str, image_data: Dict[str, str]
+    def _ask_backend_with_text_and_files(
+        self, text: str, images: list[Dict[str, str]]
     ) -> Dict[str, Any] | None:
         """
-        Send text + image file to backend for analysis using multipart form-data.
+        Send text + multiple image files to backend in same request.
+
+        Uses multipart form-data with:
+        - text: form field
+        - file: multiple file fields
 
         Args:
             text: Text content from the request
-            image_data: Dict with 'data' (base64), 'mime_type', 'source'
+            images: List of dicts with 'data' (base64), 'mime_type', 'source'
 
         Returns:
             Detection result dict or None on error
         """
-        if not image_data.get("data"):
-            return None
-
-        try:
-            image_bytes = base64.b64decode(image_data["data"], validate=True)
-        except Exception:
-            return {
-                "error": "Invalid base64 image data",
-                "risk_level": "unknown",
-                "detected_fields": [],
-            }
-
-        # Determine file extension from mime type
-        mime_type = image_data.get("mime_type", "image/png")
-        extension = mime_type.split("/")[-1]
-        if extension == "jpeg":
-            extension = "jpg"
-
-        filename = f"image.{extension}"
-
-        # Create file-like object from bytes
-        file_obj = io.BytesIO(image_bytes)
-
         detect_url = config.BACKEND_URL
+
+        files_to_send = []
+        for idx, image_data in enumerate(images):
+            if not image_data.get("data"):
+                continue
+
+            try:
+                image_bytes = base64.b64decode(image_data["data"], validate=True)
+            except Exception:
+                continue
+
+            mime_type = image_data.get("mime_type", "image/png")
+            extension = mime_type.split("/")[-1]
+            if extension == "jpeg":
+                extension = "jpg"
+
+            filename = f"image_{idx}.{extension}"
+
+            file_tuple = ("file", (filename, io.BytesIO(image_bytes), mime_type))
+            files_to_send.append(file_tuple)
+
+        # If no valid images, fallback to text-only
+        if not files_to_send:
+            return self._ask_backend(text) if text else None
 
         try:
             with httpx.Client(timeout=config.BACKEND_TIMEOUT_SECONDS) as client:
-                # Send as multipart form-data (like the extension does)
-                files = {"file": (filename, file_obj, mime_type)}
-                data = (
-                    {"text": text, "min_block_level": config.MIN_BLOCK_LEVEL}
-                    if text
-                    else {"min_block_level": config.MIN_BLOCK_LEVEL}
-                )
-
-                response = client.post(detect_url, files=files, data=data)
+                data = {"text": text, "min_block_level": config.MIN_BLOCK_LEVEL}
+                response = client.post(detect_url, files=files_to_send, data=data)
 
             if response.status_code >= 400:
                 return None
@@ -309,34 +306,30 @@ class SensitiveDataDetector:
         except (UnicodeDecodeError, json.JSONDecodeError):
             return
 
-        # Extract text content
+        # Extract text content and images once
         text_to_check = self._extract_payload_text(payload, flow.request.path)
-
-        # Check text first
-        if text_to_check:
-            result = self._ask_backend(text_to_check)
-
-            if result is None:
-                # Backend error, allow request to continue
-                return
-
-            if self._should_block(result):
-                self._create_block_response(flow, result)
-                return
-
-        # Extract and check images
         images = self._extract_base64_images(payload)
 
-        for image in images:
-            result = self._ask_backend_with_file(text_to_check or "", image)
+        # Send ONE combined request instead of N+1 separate requests
+        result = None
 
-            if result is None:
-                # Backend error or invalid image, continue checking other images
-                continue
+        if images:
+            # Text + images together in a single request
+            result = self._ask_backend_with_text_and_files(text_to_check or "", images)
+        elif text_to_check:
+            # Text only
+            result = self._ask_backend(text_to_check)
+        else:
+            # Nothing to check
+            return
 
-            if self._should_block(result):
-                self._create_block_response(flow, result)
-                return
+        # Check result once
+        if result is None:
+            # Backend error, allow request to continue
+            return
+
+        if self._should_block(result):
+            self._create_block_response(flow, result)
 
     def response(self, flow: HTTPFlow) -> None:
         if not self._should_intercept(flow):
