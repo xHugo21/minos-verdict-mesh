@@ -147,8 +147,7 @@ def test_read_document_appends_file_to_existing_text(tmp_path, guard_config):
     # Both existing text and file content should be present
     assert "existing text" in result["raw_text"]
     assert "file content" in result["raw_text"]
-    # Changed to double newline separator for multi-file support
-    assert result["raw_text"] == "existing text\n\nfile content"
+    assert result["raw_text"] == "existing text file content"
 
 
 def test_is_image_file_detects_png():
@@ -347,8 +346,7 @@ def test_read_document_with_multiple_files(tmp_path, guard_config):
 
     result = read_document(state, fw_config=guard_config)
 
-    # All files should be concatenated with double newline separator
-    assert result["raw_text"] == "first file\n\nsecond file\n\nthird file"
+    assert result["raw_text"] == "first file second file third file"
     assert result["metadata"]["file_type"] == "text"
     assert result["warnings"] == []
     assert result["errors"] == []
@@ -372,8 +370,8 @@ def test_read_document_with_multiple_files_and_existing_text(tmp_path, guard_con
 
     result = read_document(state, fw_config=guard_config)
 
-    # Existing text should be preserved and files appended
-    assert result["raw_text"] == "existing text\n\nfile one\n\nfile two"
+    # Existing text should be preserved and files appended with single space
+    assert result["raw_text"] == "existing text file one file two"
     assert result["warnings"] == []
     assert result["errors"] == []
 

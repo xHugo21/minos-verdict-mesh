@@ -321,7 +321,7 @@ def read_document(state: GuardState, *, fw_config) -> GuardState:
         existing_text = state.get("raw_text", "")
         all_texts = [existing_text] if existing_text else []
         all_texts.extend(extracted_texts)
-        state["raw_text"] = "\n\n".join(all_texts)
+        state["raw_text"] = " ".join(all_texts)
 
     return state
 
@@ -372,7 +372,7 @@ def llm_ocr_document(state: GuardState, *, fw_config) -> GuardState:
             existing_text = state.get("raw_text", "")
             all_texts = [existing_text] if existing_text else []
             all_texts.extend(extracted_texts)
-            state["raw_text"] = "\n\n".join(all_texts)
+            state["raw_text"] = " ".join(all_texts)
 
             if "metadata" not in state:
                 state["metadata"] = {}
