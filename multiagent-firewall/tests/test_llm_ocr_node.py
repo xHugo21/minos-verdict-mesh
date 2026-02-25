@@ -9,10 +9,10 @@ from multiagent_firewall.types import GuardState
 
 
 def test_llm_ocr_document_skips_non_image(guard_config):
-    """Test that LLM OCR skips non-image files"""
+    """Test that LLM OCR skips when no images need processing"""
     state: GuardState = {
         "raw_text": "",
-        "metadata": {"file_type": "pdf"},
+        "metadata": {"file_type": "pdf"},  # No images_needing_llm_ocr list
         "warnings": [],
         "errors": [],
     }
@@ -25,24 +25,26 @@ def test_llm_ocr_document_skips_non_image(guard_config):
 
 
 def test_llm_ocr_document_skips_when_text_exists(guard_config):
-    """Test that LLM OCR skips when text already extracted"""
+    """Test that LLM OCR skips when no images need processing"""
     state: GuardState = {
         "raw_text": "Already extracted text",
-        "metadata": {"file_type": "image"},
+        "metadata": {"file_type": "image"},  # No images_needing_llm_ocr list
         "warnings": [],
         "errors": [],
     }
 
     result = llm_ocr_document(state, fw_config=guard_config)
 
-    # State should be unchanged
+    # State should be unchanged (no images in the list to process)
     assert result["raw_text"] == "Already extracted text"
     assert len(result.get("warnings", [])) == 0
 
 
 @patch("multiagent_firewall.nodes.document.LLMOCRDetector")
-def test_llm_ocr_document_skips_when_text_is_whitespace(mock_ocr_detector, guard_config):
-    """Test that LLM OCR runs when text is only whitespace"""
+def test_llm_ocr_document_skips_when_text_is_whitespace(
+    mock_ocr_detector, guard_config
+):
+    """Test that LLM OCR runs when image is in processing list"""
     mock_detector = MagicMock()
     mock_detector.model = "gpt-4o"
     mock_detector.return_value = "Extracted by LLM"
@@ -51,7 +53,10 @@ def test_llm_ocr_document_skips_when_text_is_whitespace(mock_ocr_detector, guard
     state: GuardState = {
         "raw_text": "   \n  ",  # Only whitespace
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -75,7 +80,10 @@ def test_llm_ocr_document_extracts_text_successfully(mock_ocr_detector, guard_co
     state: GuardState = {
         "raw_text": "",
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -98,26 +106,29 @@ def test_llm_ocr_document_appends_to_existing_text(mock_ocr_detector, guard_conf
     mock_detector.return_value = "New text from LLM"
     mock_ocr_detector.return_value = mock_detector
 
-    # Note: In practice this shouldn't happen because we check if raw_text exists,
-    # but we test the append logic anyway
     state: GuardState = {
-        "raw_text": "",  # Empty but then we'll make the detector think there's existing text
+        "raw_text": "Existing content",  # Already has content (e.g., from PDF)
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
 
-    # Set existing text before calling
-    state["raw_text"] = ""
     result = llm_ocr_document(state, fw_config=guard_config)
 
-    # Should have new text (since raw_text was empty)
-    assert result["raw_text"] == "New text from LLM"
+    # Should append to existing text
+    assert "Existing content" in result["raw_text"]
+    assert "New text from LLM" in result["raw_text"]
+    assert result["raw_text"] == "Existing content\n\nNew text from LLM"
 
 
 @patch("multiagent_firewall.nodes.document.LLMOCRDetector")
-def test_llm_ocr_document_adds_warning_when_no_text_extracted(mock_ocr_detector, guard_config):
+def test_llm_ocr_document_adds_warning_when_no_text_extracted(
+    mock_ocr_detector, guard_config
+):
     """Test that warning is added when LLM returns empty text"""
     mock_detector = MagicMock()
     mock_detector.model = "gpt-4o"
@@ -127,7 +138,10 @@ def test_llm_ocr_document_adds_warning_when_no_text_extracted(mock_ocr_detector,
     state: GuardState = {
         "raw_text": "",
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -151,7 +165,10 @@ def test_llm_ocr_document_handles_detector_exception(mock_ocr_detector, guard_co
     state: GuardState = {
         "raw_text": "",
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -171,7 +188,10 @@ def test_llm_ocr_document_handles_from_env_exception(mock_ocr_detector, guard_co
     state: GuardState = {
         "raw_text": "",
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image"},
+        "metadata": {
+            "file_type": "image",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -181,13 +201,13 @@ def test_llm_ocr_document_handles_from_env_exception(mock_ocr_detector, guard_co
 
     # Should have error
     assert len(result["errors"]) == 1
-    assert "LLM OCR failed" in result["errors"][0]
+    assert "LLM OCR" in result["errors"][0]
     assert "Missing API key" in result["errors"][0]
 
 
 @patch("multiagent_firewall.nodes.document.LLMOCRDetector")
 def test_llm_ocr_document_metadata_not_present(mock_ocr_detector, guard_config):
-    """Test that node creates metadata dict if not present"""
+    """Test that node skips when no images_needing_llm_ocr list"""
     mock_detector = MagicMock()
     mock_detector.model = "gpt-4o"
     mock_detector.return_value = "Extracted text"
@@ -199,12 +219,11 @@ def test_llm_ocr_document_metadata_not_present(mock_ocr_detector, guard_config):
         "warnings": [],
         "errors": [],
     }
-    # Note: metadata not in state, but we'll set it to image in the check
-    # Actually, the function checks metadata.get("file_type"), so this will skip
+    # Note: metadata not in state, so no images_needing_llm_ocr list
 
     result = llm_ocr_document(state, fw_config=guard_config)
 
-    # Should skip because metadata doesn't have file_type
+    # Should skip because no images in processing list
     assert result["raw_text"] == ""
 
 
@@ -219,7 +238,11 @@ def test_llm_ocr_document_sets_metadata_correctly(mock_ocr_detector, guard_confi
     state: GuardState = {
         "raw_text": "",
         "file_path": "/fake/image.png",
-        "metadata": {"file_type": "image", "other_key": "value"},
+        "metadata": {
+            "file_type": "image",
+            "other_key": "value",
+            "images_needing_llm_ocr": ["/fake/image.png"],  # Image needs LLM OCR
+        },
         "warnings": [],
         "errors": [],
     }
@@ -231,3 +254,5 @@ def test_llm_ocr_document_sets_metadata_correctly(mock_ocr_detector, guard_confi
     assert result["metadata"]["ocr_method"] == "llm"
     assert result["metadata"]["file_type"] == "image"
     assert result["metadata"]["other_key"] == "value"
+    # images_needing_llm_ocr should be removed after processing
+    assert "images_needing_llm_ocr" not in result["metadata"]

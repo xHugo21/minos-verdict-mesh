@@ -19,8 +19,8 @@ class DummyOrchestrator:
         self.calls = []
         self.config = config
 
-    async def run(self, text=None, *, file_path=None, min_block_level=None):
-        self.calls.append((text, file_path, min_block_level))
+    async def run(self, text=None, *, file_paths=None, min_block_level=None):
+        self.calls.append((text, file_paths, min_block_level))
         return {"detected_fields": [], "risk_level": "low"}
 
 
@@ -43,7 +43,7 @@ def test_file_size_limit_enforced(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("large.txt", file, "text/plain")},
+        files={"files": ("large.txt", file, "text/plain")},
     )
 
     assert resp.status_code == 413
@@ -59,7 +59,7 @@ def test_file_size_at_limit_accepted(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("max.txt", file, "text/plain")},
+        files={"files": ("max.txt", file, "text/plain")},
     )
 
     # Should not fail with size error (may fail with other validation)
@@ -73,7 +73,7 @@ def test_small_file_accepted(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("small.txt", file, "text/plain")},
+        files={"files": ("small.txt", file, "text/plain")},
     )
 
     assert resp.status_code == 200
@@ -88,7 +88,7 @@ def test_valid_pdf_mime_type_accepted(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("document.pdf", file, "application/pdf")},
+        files={"files": ("document.pdf", file, "application/pdf")},
     )
 
     assert resp.status_code == 200
@@ -102,7 +102,7 @@ def test_valid_png_mime_type_accepted(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("image.png", file, "image/png")},
+        files={"files": ("image.png", file, "image/png")},
     )
 
     assert resp.status_code == 200
@@ -115,7 +115,7 @@ def test_unsupported_extension_rejected(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("malicious.exe", file, "application/octet-stream")},
+        files={"files": ("malicious.exe", file, "application/octet-stream")},
     )
 
     assert resp.status_code == 400
@@ -131,7 +131,7 @@ def test_mime_type_spoofing_detected(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("fake.pdf", file, "application/pdf")},
+        files={"files": ("fake.pdf", file, "application/pdf")},
     )
 
     # Should fail MIME validation
@@ -155,7 +155,7 @@ def test_filename_with_path_traversal_sanitized(client):
     for dangerous_name in dangerous_names:
         resp = client.post(
             "/detect",
-            files={"file": (dangerous_name, file, "text/plain")},
+            files={"files": (dangerous_name, file, "text/plain")},
         )
 
         # Should either reject or sanitize (not return 200 and accept dangerous path)
@@ -172,7 +172,7 @@ def test_absolute_path_in_filename_sanitized(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("/etc/passwd", file, "text/plain")},
+        files={"files": ("/etc/passwd", file, "text/plain")},
     )
 
     # Should handle gracefully
@@ -194,7 +194,7 @@ def test_filename_with_special_chars_handled(client):
     for special_name in special_names:
         resp = client.post(
             "/detect",
-            files={"file": (special_name, file, "text/plain")},
+            files={"files": (special_name, file, "text/plain")},
         )
 
         # Should handle gracefully without crashing
@@ -213,7 +213,7 @@ def test_multiple_concurrent_uploads(client):
         file = io.BytesIO(content)
         resp = client.post(
             "/detect",
-            files={"file": (f"file{i}.txt", file, "text/plain")},
+            files={"files": (f"file{i}.txt", file, "text/plain")},
         )
         responses.append(resp)
 
@@ -229,7 +229,7 @@ def test_empty_file_handled(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("empty.txt", empty_file, "text/plain")},
+        files={"files": ("empty.txt", empty_file, "text/plain")},
     )
 
     # Should not crash
@@ -243,7 +243,7 @@ def test_file_without_extension(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("noextension", file, "text/plain")},
+        files={"files": ("noextension", file, "text/plain")},
     )
 
     # Should handle gracefully
@@ -265,7 +265,7 @@ def test_unicode_filename_handled(client):
     for unicode_name in unicode_names:
         resp = client.post(
             "/detect",
-            files={"file": (unicode_name, file, "text/plain")},
+            files={"files": (unicode_name, file, "text/plain")},
         )
 
         # Should handle gracefully
@@ -285,7 +285,7 @@ def test_temporary_file_cleaned_up_on_validation_error(client, tmp_path, monkeyp
 
     resp = client.post(
         "/detect",
-        files={"file": ("large.txt", file, "text/plain")},
+        files={"files": ("large.txt", file, "text/plain")},
     )
 
     # Should reject
@@ -302,7 +302,7 @@ def test_supported_image_extensions(client):
         file = io.BytesIO(png_content)
         resp = client.post(
             "/detect",
-            files={"file": (f"image{ext}", file, "image/png")},
+            files={"files": (f"image{ext}", file, "image/png")},
         )
 
         # Should be recognized as valid image extension
@@ -317,7 +317,7 @@ def test_supported_document_extensions(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("document.pdf", file, "application/pdf")},
+        files={"files": ("document.pdf", file, "application/pdf")},
     )
 
     assert resp.status_code == 200
@@ -332,7 +332,7 @@ def test_supported_code_extensions(client):
         file = io.BytesIO(code_content)
         resp = client.post(
             "/detect",
-            files={"file": (f"script{ext}", file, "text/plain")},
+            files={"files": (f"script{ext}", file, "text/plain")},
         )
 
         # Should accept code files
@@ -348,7 +348,7 @@ def test_response_does_not_leak_internal_paths(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("test.txt", file, "text/plain")},
+        files={"files": ("test.txt", file, "text/plain")},
     )
 
     response_text = resp.text.lower()
@@ -367,7 +367,7 @@ def test_error_response_structure(client):
 
     resp = client.post(
         "/detect",
-        files={"file": ("large.txt", file, "text/plain")},
+        files={"files": ("large.txt", file, "text/plain")},
     )
 
     assert resp.status_code == 413
@@ -397,7 +397,7 @@ def test_missing_filetype_library_returns_503(client, monkeypatch):
 
     resp = client.post(
         "/detect",
-        files={"file": ("test.txt", file, "text/plain")},
+        files={"files": ("test.txt", file, "text/plain")},
     )
 
     assert resp.status_code == 503

@@ -5,7 +5,8 @@
     "text": [".txt", ".md", ".csv", ".js", ".py", ".java", ".cpp", ".c", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sh", ".sql"]
   },
   "file_validation": {
-    "global_max_size_mb": 50
+    "global_max_size_mb": 50,
+    "max_files_per_request": 10
   },
   "prompts": {
     "llm_detector": "sensitive-data-llm-prompt.txt",

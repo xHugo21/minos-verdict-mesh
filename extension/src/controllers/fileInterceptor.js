@@ -137,59 +137,50 @@
     let backendError = null;
 
     try {
-      const previewFile = files[0];
       console.log(
-        `[SensitiveDataDetectorExtension] Detected file upload: ${previewFile.name}`,
+        `[SensitiveDataDetectorExtension] Detected ${files.length} file upload(s): ${files.map((f) => f.name).join(", ")}`,
       );
 
       // Show loading state
       sg.loadingState.show({
-        message: files.length > 1 ? "Analyzing files..." : "Analyzing file...",
+        message:
+          files.length > 1
+            ? `Analyzing ${files.length} files...`
+            : "Analyzing file...",
       });
       loadingShown = true;
 
-      let blocked = null;
-      let warned = null;
+      const result = await sg.fileAnalyzer.analyzeFiles(files);
 
-      for (const file of files) {
-        const result = await sg.fileAnalyzer.analyzeFile(file);
-        if (result?.extracted_snippet) {
-          console.log(
-            `[SensitiveDataDetectorExtension] Extracted snippet from ${file.name}:`,
-            result.extracted_snippet.substring(0, 200) + "...",
-          );
-        }
-        if (result?.detected_fields?.length > 0) {
-          console.log(
-            `[SensitiveDataDetectorExtension] Detected ${result.detected_fields.length} sensitive fields in ${file.name}:`,
-            result.detected_fields.map((f) => f.field),
-          );
-        }
-        if (shouldBlockFile(result)) {
-          blocked = { file, result };
-          break;
-        }
-        if (!warned && shouldWarnFile(result)) {
-          warned = { file, result };
-        }
+      if (result?.extracted_snippet) {
+        console.log(
+          `[SensitiveDataDetectorExtension] Extracted snippet from ${files.length} file(s):`,
+          result.extracted_snippet.substring(0, 200) + "...",
+        );
+      }
+      if (result?.detected_fields?.length > 0) {
+        console.log(
+          `[SensitiveDataDetectorExtension] Detected ${result.detected_fields.length} sensitive field(s) across ${files.length} file(s):`,
+          result.detected_fields.map((f) => f.field),
+        );
       }
 
       durationMs = now() - startedAt;
 
-      if (blocked) {
-        const displayName = blocked.file.name;
+      if (shouldBlockFile(result)) {
+        const displayName =
+          files.length === 1 ? files[0].name : `${files.length} files`;
         const sanitizedText =
-          typeof blocked.result?.anonymized_text === "string"
-            ? blocked.result.anonymized_text.trim()
+          typeof result?.anonymized_text === "string"
+            ? result.anonymized_text.trim()
             : "";
         lastFileIntent = {
           input,
           files,
-          file: blocked.file,
-          result: blocked.result,
+          result: result,
           sanitizedText: sanitizedText || null,
         };
-        sg.panel.render(blocked.result, displayName, {
+        sg.panel.render(result, displayName, {
           durationMs,
           mode: "block",
           requireAction: true,
@@ -200,10 +191,11 @@
         return;
       }
 
-      if (warned) {
-        const displayName = warned.file.name;
+      if (shouldWarnFile(result)) {
+        const displayName =
+          files.length === 1 ? files[0].name : `${files.length} files`;
         allowUpload(input, files);
-        sg.panel.render(warned.result, displayName, {
+        sg.panel.render(result, displayName, {
           durationMs,
           mode: "warn",
           requireAction: false,
@@ -217,11 +209,10 @@
     } catch (err) {
       backendError = err;
       durationMs = now() - startedAt;
-      const fallbackFile = files[0];
+      const displayName =
+        files.length === 1 ? files[0].name : `${files.length} files`;
       console.error(
-        `[SensitiveDataDetectorExtension] Error analyzing ${
-          fallbackFile?.name || "file"
-        }:`,
+        `[SensitiveDataDetectorExtension] Error analyzing ${displayName}:`,
         err,
       );
 
@@ -233,7 +224,7 @@
           detected_fields: [],
           error: errorMessage,
         },
-        fallbackFile ? fallbackFile.name : "File upload",
+        displayName,
         {
           durationMs,
           mode: "warn",
@@ -246,7 +237,6 @@
       lastFileIntent = {
         input,
         files,
-        file: fallbackFile || null,
         error: err,
       };
       clearInput(input);

@@ -76,10 +76,17 @@ function setup({ resultFactory }) {
   };
 
   const analyzeCalls = [];
+  const analyzeFilesCalls = [];
   globalThis.SG.fileAnalyzer = {
     analyzeFile: async (file) => {
       analyzeCalls.push(file);
       return resultFactory(file);
+    },
+    analyzeFiles: async (files) => {
+      analyzeFilesCalls.push(files);
+      // For multi-file analysis, combine results from all files
+      // In tests we just return the result from first file for simplicity
+      return resultFactory(files[0]);
     },
   };
 
@@ -105,6 +112,7 @@ function setup({ resultFactory }) {
     handler,
     createInput,
     analyzeCalls,
+    analyzeFilesCalls,
     dispatched,
     get renderCall() {
       return renderCall;
@@ -149,7 +157,7 @@ test("warn auto-allows upload and shows dismiss-only panel", async () => {
 
   assert.equal(prevented, true);
   assert.equal(stopped, true);
-  assert.equal(env.analyzeCalls.length, 1);
+  assert.equal(env.analyzeFilesCalls.length, 1);
   assert.equal(env.dispatched.length, 1);
   assert.equal(input.dataset.sgBypass, "true");
   assert.equal(input.value, "original");

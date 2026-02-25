@@ -142,116 +142,186 @@ def _get_default_ocr_detector(fw_config):
         return None
 
 
+def _process_image_file(
+    file_path_clean: str, state: GuardState, fw_config
+) -> str | None:
+    """
+    Process an image file with OCR.
+
+    Returns extracted text or None if extraction failed.
+    """
+    if not _has_ocr_support():
+        append_warning(
+            state,
+            "Image file detected but OCR dependencies are not installed. "
+            f"Install {FILE_ANALYSIS_EXTRA} and Tesseract.",
+        )
+        if "metadata" not in state:
+            state["metadata"] = {}
+        if "images_needing_llm_ocr" not in state["metadata"]:
+            state["metadata"]["images_needing_llm_ocr"] = []
+        state["metadata"]["images_needing_llm_ocr"].append(file_path_clean)
+        return None
+
+    ocr_detector = _get_default_ocr_detector(fw_config)
+    if not ocr_detector:
+        append_warning(
+            state,
+            f"Image file detected but no OCR detector available: {file_path_clean}",
+        )
+        if "metadata" not in state:
+            state["metadata"] = {}
+        if "images_needing_llm_ocr" not in state["metadata"]:
+            state["metadata"]["images_needing_llm_ocr"] = []
+        state["metadata"]["images_needing_llm_ocr"].append(file_path_clean)
+        return None
+
+    try:
+        temp_state: dict = dict(state)  # type: ignore
+        temp_state["file_path"] = file_path_clean
+
+        text = ocr_detector(temp_state) or ""  # type: ignore
+
+        if "metadata" not in state:
+            state["metadata"] = {}
+        state["metadata"]["ocr_attempted"] = True
+        state["metadata"]["tesseract_text_found"] = bool(text)
+
+        if text:
+            state["metadata"]["ocr_method"] = "tesseract"
+        else:
+            append_warning(state, f"No text extracted from image: {file_path_clean}")
+            if "images_needing_llm_ocr" not in state["metadata"]:
+                state["metadata"]["images_needing_llm_ocr"] = []
+            state["metadata"]["images_needing_llm_ocr"].append(file_path_clean)
+
+        return text
+    except Exception as e:
+        append_error(state, f"OCR detection failed for {file_path_clean}: {str(e)}")
+        if "metadata" not in state:
+            state["metadata"] = {}
+        if "images_needing_llm_ocr" not in state["metadata"]:
+            state["metadata"]["images_needing_llm_ocr"] = []
+        state["metadata"]["images_needing_llm_ocr"].append(file_path_clean)
+        return None
+
+
+def _process_pdf_file(file_path_clean: str, state: GuardState) -> str | None:
+    """
+    Process a PDF file.
+
+    Returns extracted text or None if extraction failed.
+    """
+    if not _has_pdf_support():
+        append_warning(
+            state,
+            "PDF file detected but PDF support is not installed. "
+            f"Install {FILE_ANALYSIS_EXTRA}.",
+        )
+        return None
+
+    text = extract_text_from_file(file_path_clean)
+
+    if text is None:
+        append_error(state, f"Failed to extract text from PDF: {file_path_clean}")
+        return None
+
+    return text
+
+
+def _process_text_file(file_path_clean: str, state: GuardState) -> str | None:
+    """
+    Process a plain text file.
+
+    Returns extracted text or None if extraction failed.
+    """
+    text = extract_text_from_file(file_path_clean)
+
+    if text is None:
+        append_error(state, f"Failed to extract text from file: {file_path_clean}")
+        return None
+
+    return text
+
+
 def read_document(state: GuardState, *, fw_config) -> GuardState:
     """
-    Document ingestion node: Extracts text from file if file_path provided.
+    Document ingestion node: Extracts text from multiple files.
 
+    Supports:
     - images: Run OCR detector if available or fallback to VLM
     - PDFs: Extract text using pdfplumber
     - text files: Read as plain text
+
+    Processes file_paths list and merges text with double newline separator.
     """
     if "raw_text" not in state:
         state["raw_text"] = ""
 
-    # Get file_path if provided
-    file_path = state.get("file_path")
+    file_paths = state.get("file_paths") or []
 
-    # Sanitize and validate file path
-    try:
-        assert isinstance(file_path, str), "file_path must be a string"
-        file_path_clean = sanitize_file_path(file_path)
+    if not file_paths:
+        return state
 
-        if not os.path.exists(file_path_clean):
-            append_error(state, f"File not found: {file_path}")
-            return state
+    if "metadata" not in state:
+        state["metadata"] = {}
 
-        if "metadata" not in state:
-            state["metadata"] = {}
+    extracted_texts = []
+    file_types_seen = []
 
-        file_type_def = FILE_TYPE_CONFIG.get_by_extension(file_path_clean)
+    for file_path in file_paths:
+        try:
+            # Sanitize and validate file path
+            if not isinstance(file_path, str):
+                append_error(state, f"Invalid file path type: {type(file_path)}")
+                continue
 
-        if not file_type_def:
-            append_error(state, f"Unsupported file type: {file_path}")
-            return state
+            file_path_clean = sanitize_file_path(file_path)
 
-        category = file_type_def.category
-        state["metadata"]["file_type"] = category
+            if not os.path.exists(file_path_clean):
+                append_error(state, f"File not found: {file_path}")
+                continue
 
-        if category == "image":
-            if not _has_ocr_support():
-                append_warning(
-                    state,
-                    "Image file detected but OCR dependencies are not installed. "
-                    f"Install {FILE_ANALYSIS_EXTRA} and Tesseract.",
-                )
+            file_type_def = FILE_TYPE_CONFIG.get_by_extension(file_path_clean)
+
+            if not file_type_def:
+                append_error(state, f"Unsupported file type: {file_path}")
+                continue
+
+            category = file_type_def.category
+            file_types_seen.append(category)
+
+            text = None
+            if category == "image":
+                text = _process_image_file(file_path_clean, state, fw_config)
+            elif category == "pdf":
+                text = _process_pdf_file(file_path_clean, state)
+            elif category == "text":
+                text = _process_text_file(file_path_clean, state)
             else:
-                ocr_detector = _get_default_ocr_detector(fw_config)
-                if ocr_detector:
-                    try:
-                        # Call OCR detector with current state - returns plain text
-                        text = ocr_detector(state) or ""
+                append_error(state, f"Unknown file category: {category}")
+                continue
 
-                        # Track OCR metadata
-                        state["metadata"]["ocr_attempted"] = True
-                        state["metadata"]["tesseract_text_found"] = bool(text)
+            if text:
+                extracted_texts.append(text)
 
-                        # Append to existing raw_text
-                        existing_text = state.get("raw_text", "")
-                        if existing_text and text:
-                            state["raw_text"] = f"{existing_text}\n{text}"
-                        elif text:
-                            state["raw_text"] = text
+        except Exception as e:
+            append_error(state, f"Document extraction error for {file_path}: {str(e)}")
+            continue
 
-                        if text:
-                            state["metadata"]["ocr_method"] = "tesseract"
-                        else:
-                            append_warning(
-                                state, f"No text extracted from image: {file_path}"
-                            )
-                    except Exception as e:
-                        append_error(state, f"OCR detection failed: {str(e)}")
-                else:
-                    append_warning(
-                        state,
-                        f"Image file detected but no OCR detector available: {file_path}",
-                    )
+    if file_types_seen:
+        # For single file, store as file_type for backward compatibility
+        state["metadata"]["file_type"] = file_types_seen[0]
+        # Store all types for multi-file scenarios
+        if len(file_types_seen) > 1:
+            state["metadata"]["file_types"] = file_types_seen
+            state["metadata"]["files_processed"] = len(extracted_texts)
 
-        elif category == "pdf":
-            if not _has_pdf_support():
-                append_warning(
-                    state,
-                    "PDF file detected but PDF support is not installed. "
-                    f"Install {FILE_ANALYSIS_EXTRA}.",
-                )
-                text = ""
-            else:
-                text = extract_text_from_file(file_path_clean)
-
-            if text is None:
-                append_error(state, f"Failed to extract text from file: {file_path}")
-            else:
-                existing_text = state.get("raw_text", "")
-                if existing_text and text:
-                    state["raw_text"] = f"{existing_text}\n{text}"
-                elif text:
-                    state["raw_text"] = text
-
-        elif category == "text":
-            text = extract_text_from_file(file_path_clean)
-
-            if text is None:
-                append_error(state, f"Failed to extract text from file: {file_path}")
-            else:
-                existing_text = state.get("raw_text", "")
-                if existing_text and text:
-                    state["raw_text"] = f"{existing_text}\n{text}"
-                elif text:
-                    state["raw_text"] = text
-        else:
-            append_error(state, f"Unknown file category: {category}")
-
-    except Exception as e:
-        append_error(state, f"Document extraction error: {str(e)}")
+    if extracted_texts:
+        existing_text = state.get("raw_text", "")
+        all_texts = [existing_text] if existing_text else []
+        all_texts.extend(extracted_texts)
+        state["raw_text"] = "\n\n".join(all_texts)
 
     return state
 
@@ -261,16 +331,13 @@ def llm_ocr_document(state: GuardState, *, fw_config) -> GuardState:
     LLM OCR fallback node: Uses vision-capable LLM to extract text from images
     when Tesseract OCR fails or returns empty results.
 
-    Only runs if:
-    1. File is an image (metadata["file_type"] == "image")
-    2. No text was extracted (raw_text is empty or whitespace)
+    Handles both single and multiple file scenarios by processing each image
+    that needs OCR fallback individually.
     """
-    # Check if this is an image with no extracted text
     metadata = state.get("metadata", {})
-    raw_text = (state.get("raw_text") or "").strip()
-    is_image = metadata.get("file_type") == "image"
+    images_needing_ocr = metadata.get("images_needing_llm_ocr", [])
 
-    if not is_image or raw_text:
+    if not images_needing_ocr:
         return state
 
     try:
@@ -281,27 +348,43 @@ def llm_ocr_document(state: GuardState, *, fw_config) -> GuardState:
             client_params=llm_ocr_settings.client_params,
         )
 
-        text = llm_ocr(state) or ""
+        extracted_texts = []
 
-        if text:
+        for image_path in images_needing_ocr:
+            try:
+                temp_state: dict = dict(state)  # type: ignore
+                temp_state["file_path"] = image_path
+
+                text = llm_ocr(temp_state) or ""  # type: ignore
+
+                if text:
+                    extracted_texts.append(text)
+                else:
+                    append_warning(
+                        state,
+                        f"LLM OCR did not extract any text from image: {image_path}",
+                    )
+            except Exception as e:
+                append_error(state, f"LLM OCR failed for {image_path}: {str(e)}")
+                continue
+
+        if extracted_texts:
             existing_text = state.get("raw_text", "")
-            if existing_text and text:
-                state["raw_text"] = f"{existing_text}\n{text}"
-            elif text:
-                state["raw_text"] = text
+            all_texts = [existing_text] if existing_text else []
+            all_texts.extend(extracted_texts)
+            state["raw_text"] = "\n\n".join(all_texts)
 
             if "metadata" not in state:
                 state["metadata"] = {}
             state["metadata"]["llm_ocr_used"] = True
             state["metadata"]["ocr_method"] = "llm"
-        else:
-            append_warning(
-                state,
-                f"LLM OCR did not extract any text from image: {state.get('file_path')}",
-            )
+            state["metadata"]["llm_ocr_images_processed"] = len(extracted_texts)
+
+        if "images_needing_llm_ocr" in state["metadata"]:
+            del state["metadata"]["images_needing_llm_ocr"]
 
     except Exception as e:
-        append_error(state, f"LLM OCR failed: {str(e)}")
+        append_error(state, f"LLM OCR initialization failed: {str(e)}")
 
     return state
 

@@ -86,7 +86,7 @@ def test_read_document_with_file_path(tmp_path, guard_config):
     file_path.write_text("file content", encoding="utf-8")
 
     state: GuardState = {
-        "file_path": str(file_path),
+        "file_paths": [str(file_path)],
         "warnings": [],
         "errors": [],
     }
@@ -101,7 +101,7 @@ def test_read_document_with_missing_file(tmp_path, guard_config):
     missing_path = tmp_path / "missing.txt"
 
     state: GuardState = {
-        "file_path": str(missing_path),
+        "file_paths": [str(missing_path)],
         "warnings": [],
         "errors": [],
     }
@@ -119,7 +119,7 @@ def test_read_document_preserves_text_on_file_error(tmp_path, guard_config):
 
     state: GuardState = {
         "raw_text": "existing text",
-        "file_path": str(missing_path),
+        "file_paths": [str(missing_path)],
         "warnings": [],
         "errors": [],
     }
@@ -138,7 +138,7 @@ def test_read_document_appends_file_to_existing_text(tmp_path, guard_config):
 
     state: GuardState = {
         "raw_text": "existing text",
-        "file_path": str(file_path),
+        "file_paths": [str(file_path)],
         "warnings": [],
         "errors": [],
     }
@@ -147,9 +147,8 @@ def test_read_document_appends_file_to_existing_text(tmp_path, guard_config):
     # Both existing text and file content should be present
     assert "existing text" in result["raw_text"]
     assert "file content" in result["raw_text"]
-    assert result["raw_text"] == "existing text\nfile content"
-
-
+    # Changed to double newline separator for multi-file support
+    assert result["raw_text"] == "existing text\n\nfile content"
 
 
 def test_is_image_file_detects_png():
@@ -169,9 +168,11 @@ def test_is_image_file_rejects_non_images():
     assert is_image_file("data.csv") == False
 
 
-@patch('multiagent_firewall.nodes.document._get_default_ocr_detector')
-@patch('multiagent_firewall.nodes.document._has_ocr_support', return_value=True)
-def test_read_document_with_image_file_and_ocr_detector(mock_has_ocr_support, mock_get_detector, tmp_path, guard_config):
+@patch("multiagent_firewall.nodes.document._get_default_ocr_detector")
+@patch("multiagent_firewall.nodes.document._has_ocr_support", return_value=True)
+def test_read_document_with_image_file_and_ocr_detector(
+    mock_has_ocr_support, mock_get_detector, tmp_path, guard_config
+):
     """Test reading image file with OCR detector"""
     image_path = tmp_path / "screenshot.png"
     image_path.write_bytes(b"fake image data")
@@ -181,7 +182,7 @@ def test_read_document_with_image_file_and_ocr_detector(mock_has_ocr_support, mo
     mock_get_detector.return_value = mock_detector
 
     state: GuardState = {
-        "file_path": str(image_path),
+        "file_paths": [str(image_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -193,17 +194,19 @@ def test_read_document_with_image_file_and_ocr_detector(mock_has_ocr_support, mo
     assert result.get("metadata", {}).get("file_type") == "image"
 
 
-@patch('multiagent_firewall.nodes.document._get_default_ocr_detector')
-@patch('multiagent_firewall.nodes.document._has_ocr_support', return_value=True)
-def test_read_document_with_image_file_no_ocr_detector(mock_has_ocr_support, mock_get_detector, tmp_path, guard_config):
+@patch("multiagent_firewall.nodes.document._get_default_ocr_detector")
+@patch("multiagent_firewall.nodes.document._has_ocr_support", return_value=True)
+def test_read_document_with_image_file_no_ocr_detector(
+    mock_has_ocr_support, mock_get_detector, tmp_path, guard_config
+):
     """Test reading image file when OCR detector fails to initialize"""
     image_path = tmp_path / "screenshot.jpg"
     image_path.write_bytes(b"fake image data")
-    
+
     mock_get_detector.return_value = None
 
     state: GuardState = {
-        "file_path": str(image_path),
+        "file_paths": [str(image_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -221,7 +224,7 @@ def test_read_document_sets_file_type_metadata_for_pdf(tmp_path, guard_config):
     pdf_path.write_bytes(b"%PDF-fake")
 
     state: GuardState = {
-        "file_path": str(pdf_path),
+        "file_paths": [str(pdf_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -238,7 +241,7 @@ def test_read_document_sets_file_type_metadata_for_text(tmp_path, guard_config):
     text_path.write_text("Some content", encoding="utf-8")
 
     state: GuardState = {
-        "file_path": str(text_path),
+        "file_paths": [str(text_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -250,9 +253,11 @@ def test_read_document_sets_file_type_metadata_for_text(tmp_path, guard_config):
     assert result.get("metadata", {}).get("file_type") == "text"
 
 
-@patch('multiagent_firewall.nodes.document._get_default_ocr_detector')
-@patch('multiagent_firewall.nodes.document._has_ocr_support', return_value=True)
-def test_read_document_handles_ocr_exception(mock_has_ocr_support, mock_get_detector, tmp_path, guard_config):
+@patch("multiagent_firewall.nodes.document._get_default_ocr_detector")
+@patch("multiagent_firewall.nodes.document._has_ocr_support", return_value=True)
+def test_read_document_handles_ocr_exception(
+    mock_has_ocr_support, mock_get_detector, tmp_path, guard_config
+):
     """Test handling OCR detector exceptions"""
     image_path = tmp_path / "bad_image.png"
     image_path.write_bytes(b"corrupt image")
@@ -262,7 +267,7 @@ def test_read_document_handles_ocr_exception(mock_has_ocr_support, mock_get_dete
     mock_get_detector.return_value = mock_detector
 
     state: GuardState = {
-        "file_path": str(image_path),
+        "file_paths": [str(image_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -274,13 +279,15 @@ def test_read_document_handles_ocr_exception(mock_has_ocr_support, mock_get_dete
     assert any("OCR detection failed" in e for e in result["errors"])
 
 
-@patch('multiagent_firewall.nodes.document._has_pdf_support', return_value=False)
-def test_read_document_warns_when_pdf_support_missing(mock_has_pdf_support, tmp_path, guard_config):
+@patch("multiagent_firewall.nodes.document._has_pdf_support", return_value=False)
+def test_read_document_warns_when_pdf_support_missing(
+    mock_has_pdf_support, tmp_path, guard_config
+):
     pdf_path = tmp_path / "missing_support.pdf"
     pdf_path.write_bytes(b"%PDF-fake")
 
     state: GuardState = {
-        "file_path": str(pdf_path),
+        "file_paths": [str(pdf_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -296,13 +303,15 @@ def test_read_document_warns_when_pdf_support_missing(mock_has_pdf_support, tmp_
     assert result["errors"] == []
 
 
-@patch('multiagent_firewall.nodes.document._has_ocr_support', return_value=False)
-def test_read_document_warns_when_ocr_support_missing(mock_has_ocr_support, tmp_path, guard_config):
+@patch("multiagent_firewall.nodes.document._has_ocr_support", return_value=False)
+def test_read_document_warns_when_ocr_support_missing(
+    mock_has_ocr_support, tmp_path, guard_config
+):
     image_path = tmp_path / "missing_support.png"
     image_path.write_bytes(b"fake image data")
 
     state: GuardState = {
-        "file_path": str(image_path),
+        "file_paths": [str(image_path)],
         "warnings": [],
         "errors": [],
         "metadata": {},
@@ -315,4 +324,73 @@ def test_read_document_warns_when_ocr_support_missing(mock_has_ocr_support, tmp_
         "OCR dependencies are not installed" in warning
         for warning in result["warnings"]
     )
+    assert result["errors"] == []
+
+
+def test_read_document_with_multiple_files(tmp_path, guard_config):
+    """Test reading multiple files with file_paths parameter"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_text("first file", encoding="utf-8")
+
+    file2 = tmp_path / "file2.txt"
+    file2.write_text("second file", encoding="utf-8")
+
+    file3 = tmp_path / "file3.txt"
+    file3.write_text("third file", encoding="utf-8")
+
+    state: GuardState = {
+        "file_paths": [str(file1), str(file2), str(file3)],
+        "warnings": [],
+        "errors": [],
+        "metadata": {},
+    }
+
+    result = read_document(state, fw_config=guard_config)
+
+    # All files should be concatenated with double newline separator
+    assert result["raw_text"] == "first file\n\nsecond file\n\nthird file"
+    assert result["metadata"]["file_type"] == "text"
+    assert result["warnings"] == []
+    assert result["errors"] == []
+
+
+def test_read_document_with_multiple_files_and_existing_text(tmp_path, guard_config):
+    """Test reading multiple files with existing text"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_text("file one", encoding="utf-8")
+
+    file2 = tmp_path / "file2.txt"
+    file2.write_text("file two", encoding="utf-8")
+
+    state: GuardState = {
+        "raw_text": "existing text",
+        "file_paths": [str(file1), str(file2)],
+        "warnings": [],
+        "errors": [],
+        "metadata": {},
+    }
+
+    result = read_document(state, fw_config=guard_config)
+
+    # Existing text should be preserved and files appended
+    assert result["raw_text"] == "existing text\n\nfile one\n\nfile two"
+    assert result["warnings"] == []
+    assert result["errors"] == []
+
+
+def test_read_document_with_empty_file_paths_list(tmp_path, guard_config):
+    """Test reading with empty file_paths list"""
+    state: GuardState = {
+        "raw_text": "existing text",
+        "file_paths": [],
+        "warnings": [],
+        "errors": [],
+        "metadata": {},
+    }
+
+    result = read_document(state, fw_config=guard_config)
+
+    # Should preserve existing text
+    assert result["raw_text"] == "existing text"
+    assert result["warnings"] == []
     assert result["errors"] == []

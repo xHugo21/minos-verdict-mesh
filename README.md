@@ -44,8 +44,8 @@ flowchart TB
         API -->|invoke | FIREWALL
         FIREWALL -->|detection result| API
     end
-    EXT -->|POST /detect<br/>text or file| API
-    PROXY -->|POST /detect<br/>text or file| API
+    EXT -->|POST /detect<br/>text or files| API
+    PROXY -->|POST /detect<br/>text or files| API
     
     API -->|detection result| EXT
     API -->|detection result| PROXY

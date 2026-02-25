@@ -69,6 +69,7 @@ class FileTypeConfig:
 
         validation = config.get("file_validation", {})
         self.global_max_size_mb = validation.get("global_max_size_mb", 50)
+        self.max_files_per_request = validation.get("max_files_per_request", 10)
 
     def get_by_extension(self, filename: str) -> FileTypeDefinition | None:
         """Get file type definition by filename extension."""

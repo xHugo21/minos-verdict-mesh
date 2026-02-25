@@ -14,7 +14,7 @@ FieldList = List[Dict[str, Any]]
 
 class GuardState(TypedDict, total=False):
     # INPUT
-    file_path: NotRequired[str | None]
+    file_paths: NotRequired[list[str] | None]
     raw_text: str
     min_block_level: NotRequired[str | None]
     llm_provider: NotRequired[str]

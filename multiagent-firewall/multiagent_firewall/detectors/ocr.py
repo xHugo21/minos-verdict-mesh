@@ -35,7 +35,12 @@ class TesseractOCRDetector:
             pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
     def __call__(self, state: GuardState) -> str:
-        """Extract text from image file in state. Returns the extracted text as a plain string."""
+        """
+        Extract text from image file
+
+        Returns:
+            Extracted text as a plain string, or empty string if extraction fails.
+        """
         file_path = state.get("file_path")
 
         if not file_path:
@@ -113,6 +118,12 @@ class LLMOCRDetector:
         )
 
     def __call__(self, state: GuardState) -> str:
+        """
+        Extract text from image file using vision-capable LLM.
+
+        Returns:
+            Extracted text as a plain string, or empty string if extraction fails.
+        """
         file_path = state.get("file_path")
 
         if not file_path:

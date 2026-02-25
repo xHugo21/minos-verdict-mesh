@@ -2,20 +2,28 @@
   const sg = (root.SG = root.SG || {});
 
   /**
-   * Analyze any file by sending to backend.
-   * Backend validates file type and returns error if unsupported.
+   * Analyze files Supports both single file and multiple files.
+   *
+   * @param {File[]} files - Array of File objects to analyze
+   * @returns {Promise} Detection result covering all files
    */
-  async function analyzeFile(file) {
-    if (!file) {
-      throw new Error("No file provided");
+  async function analyzeFiles(files) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      throw new Error("No files provided");
     }
 
+    const fileNames = files.map((f) => f.name).join(", ");
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+
     console.log(
-      `[SensitiveDataDetectorExtension] Analyzing file: ${file.name} (${file.size} bytes)`,
+      `[SensitiveDataDetectorExtension] Analyzing ${files.length} files: ${fileNames} (${totalSize} bytes total)`,
     );
 
     const formData = new FormData();
-    formData.append("file", file);
+
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
 
     try {
       const result = await sg.detectorClient.detectFile(formData);
@@ -27,14 +35,14 @@
         );
       }
 
-      // Add file metadata
       result.fileInfo = {
-        name: file.name,
-        size: file.size,
+        count: files.length,
+        names: files.map((f) => f.name),
+        totalSize: totalSize,
       };
 
       console.log(
-        `[SensitiveDataDetectorExtension] Analysis complete for ${file.name}:`,
+        `[SensitiveDataDetectorExtension] Analysis complete for ${files.length} files:`,
         {
           riskLevel: result.risk_level,
           fieldsDetected: result.detected_fields?.length || 0,
@@ -46,7 +54,7 @@
       return result;
     } catch (error) {
       console.error(
-        `[SensitiveDataDetectorExtension] Error analyzing ${file.name}:`,
+        `[SensitiveDataDetectorExtension] Error analyzing ${files.length} files:`,
         error,
       );
       throw error;
@@ -54,6 +62,6 @@
   }
 
   sg.fileAnalyzer = {
-    analyzeFile,
+    analyzeFiles,
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -276,7 +276,7 @@ async def test_orchestrator_skips_final_anonymizer_without_llm(
 async def test_orchestrator_run_with_file_path(
     mock_llm_detector, tmp_path, guard_config
 ):
-    """Test orchestrator with file_path parameter"""
+    """Test orchestrator with file_paths parameter"""
     mock_detector = MagicMock()
     mock_detector.acall = AsyncMock(return_value={"detected_fields": []})
     mock_llm_detector.return_value = mock_detector
@@ -286,7 +286,7 @@ async def test_orchestrator_run_with_file_path(
     test_file.write_text("File content with SSN 123-45-6789", encoding="utf-8")
 
     orchestrator = GuardOrchestrator(guard_config)
-    result = await orchestrator.run(file_path=str(test_file))
+    result = await orchestrator.run(file_paths=[str(test_file)])
 
     assert "raw_text" in result
     assert "File content with SSN" in result["raw_text"]
@@ -298,7 +298,7 @@ async def test_orchestrator_run_with_file_path(
 async def test_orchestrator_combines_text_and_file(
     mock_llm_detector, tmp_path, guard_config
 ):
-    """Test that both text and file_path content are combined in raw_text"""
+    """Test that both text and file_paths content are combined in raw_text"""
     mock_detector = MagicMock()
     mock_detector.acall = AsyncMock(return_value={"detected_fields": []})
     mock_llm_detector.return_value = mock_detector
@@ -308,7 +308,7 @@ async def test_orchestrator_combines_text_and_file(
     test_file.write_text("File content", encoding="utf-8")
 
     orchestrator = GuardOrchestrator(guard_config)
-    result = await orchestrator.run(text="Direct text", file_path=str(test_file))
+    result = await orchestrator.run(text="Direct text", file_paths=[str(test_file)])
 
     # Both should be present in raw_text
     assert "Direct text" in result.get("raw_text")
@@ -329,7 +329,7 @@ async def test_orchestrator_preserves_text_on_file_error(
     missing_file = tmp_path / "missing.txt"
 
     orchestrator = GuardOrchestrator(guard_config)
-    result = await orchestrator.run(text="Direct text", file_path=str(missing_file))
+    result = await orchestrator.run(text="Direct text", file_paths=[str(missing_file)])
 
     # Direct text should be preserved even though file reading failed
     assert result.get("raw_text") == "Direct text"

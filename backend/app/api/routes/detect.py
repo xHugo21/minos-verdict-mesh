@@ -3,7 +3,7 @@ import os
 import tempfile
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 
 from app.utils import debug_log
 from multiagent_firewall import GuardOrchestrator
@@ -118,7 +118,7 @@ async def _validate_and_save_uploaded_file(
 @router.post("/detect")
 async def detect(
     text: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     min_block_level: Optional[str] = Form(None),
 ):
     """
@@ -126,7 +126,7 @@ async def detect(
 
     Args:
         text: Direct text input
-        file: File upload
+        files: Single or multiple file uploads
         min_block_level: Minimum risk level to trigger blocking actions
 
     Returns:
@@ -135,25 +135,49 @@ async def detect(
     try:
         block_level = min_block_level or DEFAULT_BLOCK_LEVEL
 
-        if not text and not file:
+        if not text and not files:
             raise HTTPException(
-                status_code=400, detail="Either text or file must be provided"
+                status_code=400, detail="Either text or files must be provided"
             )
 
-        tmp_path = None
-        file_metadata = None
+        files_to_process = files if files else []
 
-        if file:
-            tmp_path, file_metadata = await _validate_and_save_uploaded_file(file)
+        # Validate max files limit
+        max_files = FILE_TYPE_CONFIG.max_files_per_request
+        if len(files_to_process) > max_files:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many files. Maximum {max_files} files per request.",
+            )
+
+        tmp_paths = []
+        all_metadata = []
+
+        # Validate and save all files
+        for uploaded_file in files_to_process:
+            try:
+                tmp_path, file_metadata = await _validate_and_save_uploaded_file(
+                    uploaded_file
+                )
+                tmp_paths.append(tmp_path)
+                all_metadata.append(file_metadata)
+            except HTTPException:
+                # Cleanup already saved files on validation failure
+                for path in tmp_paths:
+                    try:
+                        path.unlink()
+                    except OSError:
+                        pass
+                raise
 
         try:
-            if tmp_path:
+            if tmp_paths:
                 debug_log(
-                    f"[SensitiveDataDetectorBackend] Processing text + file: {tmp_path}"
+                    f"[SensitiveDataDetectorBackend] Processing text + {len(tmp_paths)} file(s)"
                 )
                 result = await GuardOrchestrator(GUARD_CONFIG).run(
                     text=text,
-                    file_path=str(tmp_path),
+                    file_paths=[str(p) for p in tmp_paths],
                     min_block_level=block_level,
                 )
 
@@ -161,8 +185,11 @@ async def detect(
                     result["extracted_snippet"] = result["raw_text"][
                         :MAX_SNIPPET_LENGTH
                     ]
-                if file_metadata:
-                    result.update(file_metadata)
+                # Add metadata for all files
+                if all_metadata:
+                    result["files_metadata"] = all_metadata
+                    if len(all_metadata) == 1:
+                        result.update(all_metadata[0])
 
             else:
                 debug_log("[SensitiveDataDetectorBackend] Processing text only:", text)
@@ -178,7 +205,7 @@ async def detect(
             return result
 
         finally:
-            if tmp_path:
+            for tmp_path in tmp_paths:
                 try:
                     tmp_path.unlink()
                 except FileNotFoundError:

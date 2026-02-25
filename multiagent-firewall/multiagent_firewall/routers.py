@@ -6,19 +6,18 @@ from .types import GuardState
 
 
 def should_read_document(state: GuardState) -> str:
-    """Route to document reader only if file_path is provided."""
-    if state.get("file_path"):
+    """Route to document reader if file_paths is provided."""
+    if state.get("file_paths"):
         return "read_document"
     return "normalize"
 
 
 def should_run_llm_ocr(state: GuardState) -> str:
-    """Route to llm_ocr if image file with no extracted text."""
+    """Route to llm_ocr if there are images needing LLM OCR fallback."""
     metadata = state.get("metadata", {})
-    raw_text = (state.get("raw_text") or "").strip()
-    is_image = metadata.get("file_type") == "image"
+    images_needing_ocr = metadata.get("images_needing_llm_ocr", [])
 
-    if is_image and not raw_text:
+    if images_needing_ocr:
         return "llm_ocr"
     return "normalize"
 
@@ -35,8 +34,10 @@ def should_run_llm(state: GuardState) -> str:
 
 def route_after_dlp_ner(state: GuardState) -> str:
     """Skip pre-LLM risk/policy if no DLP/NER detections were found."""
-    if state.get("detected_fields") or state.get("dlp_fields") or state.get(
-        "ner_fields"
+    if (
+        state.get("detected_fields")
+        or state.get("dlp_fields")
+        or state.get("ner_fields")
     ):
         return "risk_dlp_ner"
     return "llm_detector"
