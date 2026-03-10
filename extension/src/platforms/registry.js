@@ -24,7 +24,7 @@
 
         if (this.platforms.has(name)) {
           console.warn(
-            `[SensitiveDataDetector] Platform ${name} is already registered`,
+            `[MinosVerdictMesh] Platform ${name} is already registered`,
           );
           return;
         }
@@ -32,7 +32,7 @@
         this.platforms.set(name, instance);
       } catch (error) {
         console.error(
-          `[SensitiveDataDetector] Failed to register platform:`,
+          `[MinosVerdictMesh] Failed to register platform:`,
           error,
         );
       }
@@ -64,14 +64,14 @@
       for (const platform of this.platforms.values()) {
         if (platform.matches(url)) {
           console.log(
-            `[SensitiveDataDetector] Detected platform: ${platform.displayName}`,
+            `[MinosVerdictMesh] Detected platform: ${platform.displayName}`,
           );
           return platform;
         }
       }
 
       console.warn(
-        `[SensitiveDataDetector] No matching platform found for URL: ${url}`,
+        `[MinosVerdictMesh] No matching platform found for URL: ${url}`,
       );
       return null;
     }
@@ -83,7 +83,7 @@
      */
     async activate(platform) {
       if (!platform) {
-        console.error("[SensitiveDataDetector] Cannot activate null platform");
+        console.error("[MinosVerdictMesh] Cannot activate null platform");
         return false;
       }
 
@@ -102,18 +102,18 @@
         const ready = await platform.waitForReady();
         if (!ready) {
           console.warn(
-            `[SensitiveDataDetector] Platform ${platform.displayName} failed to become ready`,
+            `[MinosVerdictMesh] Platform ${platform.displayName} failed to become ready`,
           );
           return false;
         }
 
         console.log(
-          `[SensitiveDataDetector] Platform ${platform.displayName} activated successfully`,
+          `[MinosVerdictMesh] Platform ${platform.displayName} activated successfully`,
         );
         return true;
       } catch (error) {
         console.error(
-          `[SensitiveDataDetector] Failed to activate platform ${platform.displayName}:`,
+          `[MinosVerdictMesh] Failed to activate platform ${platform.displayName}:`,
           error,
         );
         return false;

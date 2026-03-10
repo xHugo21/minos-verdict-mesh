@@ -609,12 +609,12 @@
     },
     {
       "bom-ref": "backend==0.1.0",
-      "description": "FastAPI backend for the sensitive-data-detector project",
+      "description": "FastAPI backend for the minos-verdict-mesh project",
       "externalReferences": [
         {
           "comment": "PackageSource: Local",
           "type": "distribution",
-          "url": "file:///home/xhugo21/master-linux/tfm/sensitive-data-detector/backend"
+          "url": "file:///home/xhugo21/master-linux/tfm/minos-verdict-mesh/backend"
         }
       ],
       "name": "backend",
@@ -2081,7 +2081,7 @@
         {
           "comment": "PackageSource: Local",
           "type": "distribution",
-          "url": "file:///home/xhugo21/master-linux/tfm/sensitive-data-detector/multiagent-firewall"
+          "url": "file:///home/xhugo21/master-linux/tfm/minos-verdict-mesh/multiagent-firewall"
         }
       ],
       "name": "multiagent-firewall",

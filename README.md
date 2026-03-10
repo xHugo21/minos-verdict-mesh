@@ -1,4 +1,4 @@
-# 🛡️ Sensitive Data Detector
+# 🛡️ Minos Verdict Mesh
 
 Modular architecture to detect and prevent private data leakage in user-LLM interactions.
 
@@ -77,14 +77,14 @@ cd backend && uv sync && uv run python -m app.main
 > [!NOTE]
 > Alternatively, you can build the `backend` image using the provided Dockerfile:
 > ```bash
-> docker build -t sensitive-data-detector .
-> docker run -p 8000:8000 --env-file .env sensitive-data-detector
+> docker build -t minos-verdict-mesh .
+> docker run -p 8000:8000 --env-file .env minos-verdict-mesh
 > ```
 
 ### 4a. Load extension
 1. Go to chrome://extensions/
 2. Toggle on "Developer mode"
-3. Click "Load unpacked" → choose path to `sensitive-data-detector/extension/`
+3. Click "Load unpacked" → choose path to `minos-verdict-mesh/extension/`
 
 The extension will intercept web chatbots interactions (ChatGPT, Gemini...) and provide feedback to the user regarding any potential sensitive information leakage based on the configured options.
 

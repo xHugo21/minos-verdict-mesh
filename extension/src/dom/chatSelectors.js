@@ -10,7 +10,7 @@
   function getActivePlatform() {
     const platform = sg.platformRegistry?.getActive();
     if (!platform) {
-      console.warn("[SensitiveDataDetector] No active platform found");
+      console.warn("[MinosVerdictMesh] No active platform found");
     }
     return platform;
   }

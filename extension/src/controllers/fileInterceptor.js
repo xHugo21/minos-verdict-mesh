@@ -22,7 +22,7 @@
     sg.panel.onSendSanitized(handleSendSanitized);
     sg.panel.onDismiss(handleDismiss);
     console.log(
-      "[SensitiveDataDetectorExtension] File interceptor attached - monitoring all file uploads",
+      "[MinosVerdictMeshExtension] File interceptor attached - monitoring all file uploads",
     );
   }
 
@@ -46,14 +46,14 @@
           input.files = dataTransfer.files;
         } catch (err) {
           console.warn(
-            "[SensitiveDataDetectorExtension] Could not reset file input files:",
+            "[MinosVerdictMeshExtension] Could not reset file input files:",
             err,
           );
         }
       }
     } catch (err) {
       console.warn(
-        "[SensitiveDataDetectorExtension] Could not rebuild file list:",
+        "[MinosVerdictMeshExtension] Could not rebuild file list:",
         err,
       );
     }
@@ -138,7 +138,7 @@
 
     try {
       console.log(
-        `[SensitiveDataDetectorExtension] Detected ${files.length} file upload(s): ${files.map((f) => f.name).join(", ")}`,
+        `[MinosVerdictMeshExtension] Detected ${files.length} file upload(s): ${files.map((f) => f.name).join(", ")}`,
       );
 
       // Show loading state
@@ -154,13 +154,13 @@
 
       if (result?.extracted_snippet) {
         console.log(
-          `[SensitiveDataDetectorExtension] Extracted snippet from ${files.length} file(s):`,
+          `[MinosVerdictMeshExtension] Extracted snippet from ${files.length} file(s):`,
           result.extracted_snippet.substring(0, 200) + "...",
         );
       }
       if (result?.detected_fields?.length > 0) {
         console.log(
-          `[SensitiveDataDetectorExtension] Detected ${result.detected_fields.length} sensitive field(s) across ${files.length} file(s):`,
+          `[MinosVerdictMeshExtension] Detected ${result.detected_fields.length} sensitive field(s) across ${files.length} file(s):`,
           result.detected_fields.map((f) => f.field),
         );
       }
@@ -212,7 +212,7 @@
       const displayName =
         files.length === 1 ? files[0].name : `${files.length} files`;
       console.error(
-        `[SensitiveDataDetectorExtension] Error analyzing ${displayName}:`,
+        `[MinosVerdictMeshExtension] Error analyzing ${displayName}:`,
         err,
       );
 

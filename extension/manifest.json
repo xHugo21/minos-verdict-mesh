@@ -1,12 +1,12 @@
 {
-  "name": "Sensitive Data Detector",
+  "name": "Minos Verdict Mesh",
   "description": "Detect and prevent private data leakage in user-LLM interactions.",
   "version": "1.0.0",
   "manifest_version": 3,
   "icons": { "128": "icon128.png" },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Sensitive Data Detector"
+    "default_title": "Minos Verdict Mesh"
   },
   "content_scripts": [
     {

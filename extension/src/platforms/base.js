@@ -169,7 +169,7 @@
     initialize() {
       // Default: no additional initialization needed
       console.log(
-        `[SensitiveDataDetector] Platform initialized: ${this.displayName}`,
+        `[MinosVerdictMesh] Platform initialized: ${this.displayName}`,
       );
     }
 
@@ -199,7 +199,7 @@
           }
           if (attempts >= maxAttempts) {
             console.warn(
-              `[SensitiveDataDetector] Platform ${this.displayName} not ready after ${maxAttempts} attempts`,
+              `[MinosVerdictMesh] Platform ${this.displayName} not ready after ${maxAttempts} attempts`,
             );
             resolve(false);
             return;

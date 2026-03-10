@@ -17,7 +17,7 @@ cp .env.example .env
 
 ### 1. Start the Backend
 
-First, ensure the sensitive-data-detector backend is running
+First, ensure the minos-verdict-mesh backend is running
 
 ### 2. Start the Proxy
 

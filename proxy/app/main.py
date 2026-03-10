@@ -20,7 +20,7 @@ def run_proxy():
         "--set",
         "confdir=~/.mitmproxy",
         "--scripts",
-        "app/sensitive_data_detector.py",
+        "app/minos_verdict_mesh.py",
     ]
 
     print(f"Starting mitmproxy on {PROXY_HOST}:{PROXY_PORT}")

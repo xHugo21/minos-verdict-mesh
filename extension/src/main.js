@@ -14,13 +14,13 @@
 
     if (!platform) {
       console.warn(
-        "[SensitiveDataDetector] No supported platform detected on this page",
+        "[MinosVerdictMesh] No supported platform detected on this page",
       );
       return;
     }
 
     console.log(
-      `[SensitiveDataDetector] Successfully initialized on ${platform.displayName}`,
+      `[MinosVerdictMesh] Successfully initialized on ${platform.displayName}`,
     );
 
     // Initialize UI components

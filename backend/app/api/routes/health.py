@@ -7,6 +7,6 @@ router = APIRouter()
 def health():
     return {
         "status": "ok",
-        "service": "SensitiveDataDetector API",
+        "service": "MinosVerdictMesh API",
         "version": "1.0.0",
     }
