@@ -1,17 +1,17 @@
 # 🛡️ Minos Verdict Mesh
 
-Modular architecture to detect and prevent private data leakage in user-LLM interactions.
+Modular architecture to inspect, evaluate, and enforce guardrails for user-LLM interactions.
 
 ## 📦 Packages
 
 ### 🧱 Multiagent Firewall
-Implements a LangGraph-based multiagent firewall for advanced data leakage detection and policy management.
+Implements a LangGraph-based multiagent firewall for policy evaluation, guardrails, and extensible risk analysis.
 
 ### 🔌 Backend
 Provides a FastAPI server as a bridge to connect proxy and extension packages with the multiagent firewall
 
 ### 🌐 Extension
-Chromium based extension that analyzes user and LLM interactions to detect sensitive data and provide feedback to the user within the browser.
+Chromium based extension that analyzes user and LLM interactions to surface findings and provide feedback to the user within the browser.
 
 ### 🧩 Proxy
 Protect user and LLM interactions via command-line clients, IDEs or applications by routing their LLM API calls through the multiagent firewall.
@@ -86,7 +86,7 @@ cd backend && uv sync && uv run python -m app.main
 2. Toggle on "Developer mode"
 3. Click "Load unpacked" → choose path to `minos-verdict-mesh/extension/`
 
-The extension will intercept web chatbots interactions (ChatGPT, Gemini...) and provide feedback to the user regarding any potential sensitive information leakage based on the configured options.
+The extension will intercept web chatbot interactions (ChatGPT, Gemini...) and provide feedback to the user about policy findings and configured guardrail decisions.
 
 ### 4b. Run proxy
 

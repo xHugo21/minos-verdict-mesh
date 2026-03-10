@@ -272,9 +272,9 @@ class MinosVerdictMesh:
         )
 
         if field_names:
-            message = f"[MinosVerdictMeshBackend] Sensitive data detected: {field_names}. Request blocked."
+            message = f"[MinosVerdictMeshBackend] Guardrail violation detected: {field_names}. Request blocked."
         else:
-            message = "[MinosVerdictMeshBackend] Sensitive data detected. Request blocked."
+            message = "[MinosVerdictMeshBackend] Guardrail violation detected. Request blocked."
 
         payload = {
             "error": {

@@ -160,7 +160,7 @@
       }
       if (result?.detected_fields?.length > 0) {
         console.log(
-          `[MinosVerdictMeshExtension] Detected ${result.detected_fields.length} sensitive field(s) across ${files.length} file(s):`,
+          `[MinosVerdictMeshExtension] Detected ${result.detected_fields.length} finding(s) across ${files.length} file(s):`,
           result.detected_fields.map((f) => f.field),
         );
       }

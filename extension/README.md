@@ -1,6 +1,6 @@
-# Browser Extension for LLM Chat Sensitive Data Detection
+# Browser Extension for LLM Chat Guardrails
 
-A browser extension that intercepts messages in LLM chat platforms and detects sensitive data in real-time before submission.
+A browser extension that intercepts messages in LLM chat platforms and evaluates them against configured guardrails in real time before submission.
 
 ## Supported Platforms
 
@@ -31,22 +31,22 @@ The backend should be accessible at `http://127.0.0.1:8000` (configurable in `sr
 
 ## Usage
 
-### Text Detection
+### Text Inspection
 
-1. Type a message containing sensitive data (e.g., "My social security number is 123-45-6789")
+1. Type a message that should trigger one of the configured checks (e.g., "My social security number is 123-45-6789")
 2. Click send or press Enter
 3. The extension will intercept the message and analyze it
-4. A risk panel will appear showing detected sensitive fields
-5. Depending on min block risk set in multiagent-firewall parameters and fields detected it will allow, warn or block the sending.
+4. A risk panel will appear showing the findings returned by the pipeline
+5. Depending on the configured minimum block risk and the findings returned, it will allow, warn, or block the send action.
 
 > [!NOTE]
-> The panel gives the option to "Send sanitized" which will replace detected sensitive fields with redacted values and send them to the chatbot
+> The panel gives the option to "Send sanitized" which will replace detected values with redacted values and send them to the chatbot
 
-### File Detection
+### File Inspection
 
 1. Upload a file (image, PDF, document) in the chat interface
 2. The extension will analyze the file content
-3. A risk panel will display detected sensitive data from the file
+3. A risk panel will display the findings extracted from the file
 
 ## Adding a New Platform
 
