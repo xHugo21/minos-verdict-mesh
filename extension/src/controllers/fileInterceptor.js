@@ -22,7 +22,7 @@
     sg.panel.onSendSanitized(handleSendSanitized);
     sg.panel.onDismiss(handleDismiss);
     console.log(
-      "[MinosVerdictMeshExtension] File interceptor attached - monitoring all file uploads",
+      "[MinosVerdictExtension] File interceptor attached - monitoring all file uploads",
     );
   }
 
@@ -46,14 +46,14 @@
           input.files = dataTransfer.files;
         } catch (err) {
           console.warn(
-            "[MinosVerdictMeshExtension] Could not reset file input files:",
+            "[MinosVerdictExtension] Could not reset file input files:",
             err,
           );
         }
       }
     } catch (err) {
       console.warn(
-        "[MinosVerdictMeshExtension] Could not rebuild file list:",
+        "[MinosVerdictExtension] Could not rebuild file list:",
         err,
       );
     }
@@ -138,7 +138,7 @@
 
     try {
       console.log(
-        `[MinosVerdictMeshExtension] Detected ${files.length} file upload(s): ${files.map((f) => f.name).join(", ")}`,
+        `[MinosVerdictExtension] Detected ${files.length} file upload(s): ${files.map((f) => f.name).join(", ")}`,
       );
 
       // Show loading state
@@ -154,13 +154,13 @@
 
       if (result?.extracted_snippet) {
         console.log(
-          `[MinosVerdictMeshExtension] Extracted snippet from ${files.length} file(s):`,
+          `[MinosVerdictExtension] Extracted snippet from ${files.length} file(s):`,
           result.extracted_snippet.substring(0, 200) + "...",
         );
       }
       if (result?.detected_fields?.length > 0) {
         console.log(
-          `[MinosVerdictMeshExtension] Detected ${result.detected_fields.length} finding(s) across ${files.length} file(s):`,
+          `[MinosVerdictExtension] Detected ${result.detected_fields.length} finding(s) across ${files.length} file(s):`,
           result.detected_fields.map((f) => f.field),
         );
       }
@@ -212,7 +212,7 @@
       const displayName =
         files.length === 1 ? files[0].name : `${files.length} files`;
       console.error(
-        `[MinosVerdictMeshExtension] Error analyzing ${displayName}:`,
+        `[MinosVerdictExtension] Error analyzing ${displayName}:`,
         err,
       );
 

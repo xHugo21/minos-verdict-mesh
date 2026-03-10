@@ -41,7 +41,7 @@
 
     initialize() {
       console.log(
-        "[MinosVerdictMesh] ChatGPT platform adapter initialized",
+        "[MinosVerdict] ChatGPT platform adapter initialized",
       );
     }
   }

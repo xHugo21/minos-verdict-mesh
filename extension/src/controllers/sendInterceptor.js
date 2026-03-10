@@ -123,7 +123,7 @@
     } catch (err) {
       backendError = err;
       console.error(
-        "[MinosVerdictMeshExtension] Backend error, blocking send:",
+        "[MinosVerdictExtension] Backend error, blocking send:",
         err,
       );
     } finally {

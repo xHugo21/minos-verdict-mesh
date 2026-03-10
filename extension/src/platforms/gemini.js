@@ -60,7 +60,7 @@
 
     initialize() {
       console.log(
-        "[MinosVerdictMesh] Gemini platform adapter initialized",
+        "[MinosVerdict] Gemini platform adapter initialized",
       );
     }
   }

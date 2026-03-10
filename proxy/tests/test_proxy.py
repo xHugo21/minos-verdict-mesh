@@ -2,22 +2,22 @@ from __future__ import annotations
 
 import pytest
 
-from app.minos_verdict_mesh import MinosVerdictMesh
+from app.llm_request_guard import LLMRequestGuard
 
 
 @pytest.fixture
-def interceptor() -> MinosVerdictMesh:
-    return MinosVerdictMesh()
+def interceptor() -> LLMRequestGuard:
+    return LLMRequestGuard()
 
 
-def test_stringify_handles_nested_structures(interceptor: MinosVerdictMesh):
+def test_stringify_handles_nested_structures(interceptor: LLMRequestGuard):
     payload = ["alpha", 42, {"text": "nested"}, None]
 
     assert interceptor._stringify(payload) == "alpha\n42\nnested"
 
 
 def test_extract_payload_text_prefers_chat_messages(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     payload = {
         "messages": [
@@ -34,7 +34,7 @@ def test_extract_payload_text_prefers_chat_messages(
 
 
 def test_extract_payload_text_uses_prompt_for_non_chat_path(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     payload = {"prompt": {"text": "linear"}}
 
@@ -44,7 +44,7 @@ def test_extract_payload_text_uses_prompt_for_non_chat_path(
 
 
 def test_detection_headers_include_detected_fields(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     result = {
         "risk_level": "high",
@@ -61,14 +61,14 @@ def test_detection_headers_include_detected_fields(
     assert "api_key" in headers["X-LLM-Guard-Detected-Fields"]
 
 
-def test_should_block_uses_decision(interceptor: MinosVerdictMesh):
+def test_should_block_uses_decision(interceptor: LLMRequestGuard):
     assert interceptor._should_block({"decision": "block"})
     assert not interceptor._should_block({"decision": "allow"})
     assert not interceptor._should_block({"risk_level": "high"})
 
 
 def test_should_intercept_matches_configured_endpoints(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     from unittest.mock import Mock
 
@@ -81,7 +81,7 @@ def test_should_intercept_matches_configured_endpoints(
 
 
 def test_should_intercept_ignores_non_post_requests(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     from unittest.mock import Mock
 
@@ -94,7 +94,7 @@ def test_should_intercept_ignores_non_post_requests(
 
 
 def test_should_intercept_ignores_non_configured_hosts(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     from unittest.mock import Mock
 
@@ -107,7 +107,7 @@ def test_should_intercept_ignores_non_configured_hosts(
 
 
 def test_should_intercept_ignores_non_configured_paths(
-    interceptor: MinosVerdictMesh,
+    interceptor: LLMRequestGuard,
 ):
     from unittest.mock import Mock
 
@@ -119,7 +119,7 @@ def test_should_intercept_ignores_non_configured_paths(
     assert not interceptor._should_intercept(flow)
 
 
-def test_ask_backend_handles_empty_text(interceptor: MinosVerdictMesh):
+def test_ask_backend_handles_empty_text(interceptor: LLMRequestGuard):
     result = interceptor._ask_backend("")
 
     assert result["risk_level"] == "none"
@@ -127,7 +127,7 @@ def test_ask_backend_handles_empty_text(interceptor: MinosVerdictMesh):
 
 
 def test_ask_backend_posts_to_configured_url(
-    interceptor: MinosVerdictMesh, monkeypatch: pytest.MonkeyPatch
+    interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
 ):
     from app import config
     from unittest.mock import Mock, patch
@@ -139,12 +139,12 @@ def test_ask_backend_posts_to_configured_url(
     mock_response.status_code = 200
     mock_response.json.return_value = {"risk_level": "none", "detected_fields": []}
 
-    with patch("app.minos_verdict_mesh.httpx.Client") as mock_client:
+    with patch("app.llm_request_guard.httpx.Client") as mock_client:
         mock_client.return_value.__enter__.return_value.post.return_value = (
             mock_response
         )
 
-        interceptor_with_mode = MinosVerdictMesh()
+        interceptor_with_mode = LLMRequestGuard()
         result = interceptor_with_mode._ask_backend("test text")
 
         call_args = mock_client.return_value.__enter__.return_value.post.call_args

@@ -169,7 +169,7 @@
     initialize() {
       // Default: no additional initialization needed
       console.log(
-        `[MinosVerdictMesh] Platform initialized: ${this.displayName}`,
+        `[MinosVerdict] Platform initialized: ${this.displayName}`,
       );
     }
 
@@ -199,7 +199,7 @@
           }
           if (attempts >= maxAttempts) {
             console.warn(
-              `[MinosVerdictMesh] Platform ${this.displayName} not ready after ${maxAttempts} attempts`,
+              `[MinosVerdict] Platform ${this.displayName} not ready after ${maxAttempts} attempts`,
             );
             resolve(false);
             return;

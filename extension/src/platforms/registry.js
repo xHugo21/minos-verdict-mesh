@@ -24,7 +24,7 @@
 
         if (this.platforms.has(name)) {
           console.warn(
-            `[MinosVerdictMesh] Platform ${name} is already registered`,
+            `[MinosVerdict] Platform ${name} is already registered`,
           );
           return;
         }
@@ -32,7 +32,7 @@
         this.platforms.set(name, instance);
       } catch (error) {
         console.error(
-          `[MinosVerdictMesh] Failed to register platform:`,
+          `[MinosVerdict] Failed to register platform:`,
           error,
         );
       }
@@ -64,14 +64,14 @@
       for (const platform of this.platforms.values()) {
         if (platform.matches(url)) {
           console.log(
-            `[MinosVerdictMesh] Detected platform: ${platform.displayName}`,
+            `[MinosVerdict] Detected platform: ${platform.displayName}`,
           );
           return platform;
         }
       }
 
       console.warn(
-        `[MinosVerdictMesh] No matching platform found for URL: ${url}`,
+        `[MinosVerdict] No matching platform found for URL: ${url}`,
       );
       return null;
     }
@@ -83,7 +83,7 @@
      */
     async activate(platform) {
       if (!platform) {
-        console.error("[MinosVerdictMesh] Cannot activate null platform");
+        console.error("[MinosVerdict] Cannot activate null platform");
         return false;
       }
 
@@ -102,18 +102,18 @@
         const ready = await platform.waitForReady();
         if (!ready) {
           console.warn(
-            `[MinosVerdictMesh] Platform ${platform.displayName} failed to become ready`,
+            `[MinosVerdict] Platform ${platform.displayName} failed to become ready`,
           );
           return false;
         }
 
         console.log(
-          `[MinosVerdictMesh] Platform ${platform.displayName} activated successfully`,
+          `[MinosVerdict] Platform ${platform.displayName} activated successfully`,
         );
         return true;
       } catch (error) {
         console.error(
-          `[MinosVerdictMesh] Failed to activate platform ${platform.displayName}:`,
+          `[MinosVerdict] Failed to activate platform ${platform.displayName}:`,
           error,
         );
         return false;

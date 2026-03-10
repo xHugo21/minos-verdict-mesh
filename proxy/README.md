@@ -17,7 +17,7 @@ cp .env.example .env
 
 ### 1. Start the Backend
 
-First, ensure the minos-verdict-mesh backend is running
+First, ensure the Minos Verdict backend is running
 
 ### 2. Start the Proxy
 

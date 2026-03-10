@@ -12,7 +12,7 @@ from mitmproxy.http import HTTPFlow
 from app import config
 
 
-class MinosVerdictMesh:
+class LLMRequestGuard:
     def __init__(self):
         self.intercepted_hosts = config.INTERCEPTED_HOSTS
         self.intercepted_paths = config.INTERCEPTED_PATHS
@@ -272,9 +272,9 @@ class MinosVerdictMesh:
         )
 
         if field_names:
-            message = f"[MinosVerdictMeshBackend] Guardrail violation detected: {field_names}. Request blocked."
+            message = f"[MinosVerdictBackend] Guardrail violation detected: {field_names}. Request blocked."
         else:
-            message = "[MinosVerdictMeshBackend] Guardrail violation detected. Request blocked."
+            message = "[MinosVerdictBackend] Guardrail violation detected. Request blocked."
 
         payload = {
             "error": {
@@ -342,4 +342,4 @@ class MinosVerdictMesh:
             flow.response.headers[key] = value
 
 
-addons = [MinosVerdictMesh()]
+addons = [LLMRequestGuard()]
