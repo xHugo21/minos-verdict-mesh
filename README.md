@@ -1,20 +1,6 @@
-# 🛡️ Sensitive Data Detector
+# 🛡️ Minos Verdict Mesh
 
-Modular architecture to detect and prevent private data leakage in user-LLM interactions.
-
-## 📦 Packages
-
-### 🧱 Multiagent Firewall
-Implements a LangGraph-based multiagent firewall for advanced data leakage detection and policy management.
-
-### 🔌 Backend
-Provides a FastAPI server as a bridge to connect proxy and extension packages with the multiagent firewall
-
-### 🌐 Extension
-Chromium based extension that analyzes user and LLM interactions to detect sensitive data and provide feedback to the user within the browser.
-
-### 🧩 Proxy
-Protect user and LLM interactions via command-line clients, IDEs or applications by routing their LLM API calls through the multiagent firewall.
+Modular architecture to inspect, evaluate, and enforce guardrails in LLM interactions.
 
 ## 🔄 Architecture
 
@@ -77,16 +63,16 @@ cd backend && uv sync && uv run python -m app.main
 > [!NOTE]
 > Alternatively, you can build the `backend` image using the provided Dockerfile:
 > ```bash
-> docker build -t sensitive-data-detector .
-> docker run -p 8000:8000 --env-file .env sensitive-data-detector
+> docker build -t minos-verdict-mesh .
+> docker run -p 8000:8000 --env-file .env minos-verdict-mesh
 > ```
 
 ### 4a. Load extension
 1. Go to chrome://extensions/
 2. Toggle on "Developer mode"
-3. Click "Load unpacked" → choose path to `sensitive-data-detector/extension/`
+3. Click "Load unpacked" → choose path to `minos-verdict-mesh/extension/`
 
-The extension will intercept web chatbots interactions (ChatGPT, Gemini...) and provide feedback to the user regarding any potential sensitive information leakage based on the configured options.
+The extension will intercept web chatbot interactions (ChatGPT, Gemini...) and provide feedback to the user about policy findings and configured guardrail decisions.
 
 ### 4b. Run proxy
 

@@ -69,7 +69,7 @@ async def _validate_and_save_uploaded_file(
 
     try:
         debug_log(
-            f"[SensitiveDataDetectorBackend] Saved file to {tmp_path} ({file_size} bytes)"
+            f"[MinosVerdictBackend] Saved file to {tmp_path} ({file_size} bytes)"
         )
 
         file_type_def = FILE_TYPE_CONFIG.get_by_extension(file.filename or "")
@@ -83,7 +83,7 @@ async def _validate_and_save_uploaded_file(
 
         try:
             detected_mime = validate_mime_type(tmp_path, file_type_def.mime_types)
-            debug_log(f"[SensitiveDataDetectorBackend] Detected MIME: {detected_mime}")
+            debug_log(f"[MinosVerdictBackend] Detected MIME: {detected_mime}")
         except ImportError as e:
             tmp_path.unlink()
             logger.error(f"File analysis dependencies not installed: {e}")
@@ -173,7 +173,7 @@ async def detect(
         try:
             if tmp_paths:
                 debug_log(
-                    f"[SensitiveDataDetectorBackend] Processing text + {len(tmp_paths)} file(s)"
+                    f"[MinosVerdictBackend] Processing text + {len(tmp_paths)} file(s)"
                 )
                 result = await GuardOrchestrator(GUARD_CONFIG).run(
                     text=text,
@@ -192,14 +192,14 @@ async def detect(
                         result.update(all_metadata[0])
 
             else:
-                debug_log("[SensitiveDataDetectorBackend] Processing text only:", text)
+                debug_log("[MinosVerdictBackend] Processing text only:", text)
                 result = await GuardOrchestrator(GUARD_CONFIG).run(
                     text=text,
                     min_block_level=block_level,
                 )
 
             debug_log(
-                "[SensitiveDataDetectorBackend] Detected fields:",
+                "[MinosVerdictBackend] Detected fields:",
                 result.get("detected_fields", []),
             )
             return result

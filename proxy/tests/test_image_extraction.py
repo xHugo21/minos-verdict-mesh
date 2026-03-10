@@ -6,12 +6,12 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.sensitive_data_detector import SensitiveDataDetector
+from app.llm_request_guard import LLMRequestGuard
 
 
 def test_extract_openai_format():
     """Test extraction of base64 images from OpenAI/GPT-4 Vision format"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [
@@ -40,7 +40,7 @@ def test_extract_openai_format():
 
 def test_extract_claude_format():
     """Test extraction of base64 images from Anthropic Claude format"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [
@@ -71,7 +71,7 @@ def test_extract_claude_format():
 
 def test_extract_copilot_format():
     """Test extraction of base64 images from GitHub Copilot format"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [
@@ -99,7 +99,7 @@ def test_extract_copilot_format():
 
 def test_extract_gemini_format():
     """Test extraction of base64 images from Google Gemini format"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "contents": [
@@ -127,7 +127,7 @@ def test_extract_gemini_format():
 
 def test_extract_multiple_images():
     """Test extraction of multiple images from a single request"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [
@@ -157,7 +157,7 @@ def test_extract_multiple_images():
 
 def test_extract_no_images():
     """Test that extraction returns empty list when no images present"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [
@@ -175,7 +175,7 @@ def test_extract_no_images():
 
 def test_extract_malformed_data():
     """Test that extraction handles malformed data gracefully"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     # Missing required fields
     payload = {
@@ -200,7 +200,7 @@ def test_extract_malformed_data():
 
 def test_extract_url_reference():
     """Test that URL references (not base64) are ignored"""
-    detector = SensitiveDataDetector()
+    detector = LLMRequestGuard()
     
     payload = {
         "messages": [

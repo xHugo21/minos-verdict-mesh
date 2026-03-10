@@ -46,7 +46,7 @@
         handler(snapshot);
       } catch (err) {
         console.warn(
-          "[SensitiveDataDetectorExtension] Settings subscriber error:",
+          "[MinosVerdictExtension] Settings subscriber error:",
           err,
         );
       }
@@ -84,7 +84,7 @@
     root.chrome.storage.local.get(DEFAULTS, (items) => {
       if (root.chrome.runtime?.lastError) {
         console.warn(
-          "[SensitiveDataDetectorExtension] Failed to load settings:",
+          "[MinosVerdictExtension] Failed to load settings:",
           root.chrome.runtime.lastError,
         );
       }

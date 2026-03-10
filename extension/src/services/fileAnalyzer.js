@@ -16,7 +16,7 @@
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
 
     console.log(
-      `[SensitiveDataDetectorExtension] Analyzing ${files.length} files: ${fileNames} (${totalSize} bytes total)`,
+      `[MinosVerdictExtension] Analyzing ${files.length} files: ${fileNames} (${totalSize} bytes total)`,
     );
 
     const formData = new FormData();
@@ -31,7 +31,7 @@
       // Backend may return error for unsupported/invalid files
       if (result.error) {
         console.warn(
-          `[SensitiveDataDetectorExtension] Backend validation error: ${result.error}`,
+          `[MinosVerdictExtension] Backend validation error: ${result.error}`,
         );
       }
 
@@ -42,7 +42,7 @@
       };
 
       console.log(
-        `[SensitiveDataDetectorExtension] Analysis complete for ${files.length} files:`,
+        `[MinosVerdictExtension] Analysis complete for ${files.length} files:`,
         {
           riskLevel: result.risk_level,
           fieldsDetected: result.detected_fields?.length || 0,
@@ -54,7 +54,7 @@
       return result;
     } catch (error) {
       console.error(
-        `[SensitiveDataDetectorExtension] Error analyzing ${files.length} files:`,
+        `[MinosVerdictExtension] Error analyzing ${files.length} files:`,
         error,
       );
       throw error;

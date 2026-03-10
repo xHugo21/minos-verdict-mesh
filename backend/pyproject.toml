@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "backend"
 version = "0.1.0"
-description = "FastAPI backend for the sensitive-data-detector project"
+description = "FastAPI backend for the minos-verdict-mesh project"
 authors = [{ name = "Hugo Garcia" }]
 requires-python = ">=3.10"
 dependencies = [

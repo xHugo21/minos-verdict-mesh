@@ -1,6 +1,6 @@
 # Multiagent Firewall for LLM Interactions
 
-Multi-agent system that detects sensitive data in LLM prompts
+Multi-agent system that evaluates LLM interactions against configurable guardrails
 
 ## Architecture
 
@@ -79,14 +79,14 @@ Our `backend/` package exposes an HTTP API that can be used to serve an endpoint
 
 ### From another Python project
 
-#### Text Detection
+#### Text Inspection
 ```python
 from multiagent_firewall import GuardConfig, GuardOrchestrator
 
 config = GuardConfig.from_env()
 orchestrator = GuardOrchestrator(config)
 
-# Detect sensitive data in text
+# Inspect text against configured policies
 result = orchestrator.run(
   text="My SOCIALSECURITYNUMBER is 123-45-6789",
   min_block_level="low"

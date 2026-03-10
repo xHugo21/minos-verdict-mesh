@@ -41,7 +41,7 @@
 
     initialize() {
       console.log(
-        "[SensitiveDataDetector] ChatGPT platform adapter initialized",
+        "[MinosVerdict] ChatGPT platform adapter initialized",
       );
     }
   }

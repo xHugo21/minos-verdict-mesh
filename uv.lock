@@ -24,7 +24,7 @@ members = [
     "backend",
     "multiagent-firewall",
     "proxy",
-    "sensitive-data-detector",
+    "minos-verdict-mesh",
 ]
 
 [[package]]
@@ -4798,7 +4798,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sensitive-data-detector"
+name = "minos-verdict-mesh"
 version = "0.1.0"
 source = { virtual = "." }
 

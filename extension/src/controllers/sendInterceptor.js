@@ -123,7 +123,7 @@
     } catch (err) {
       backendError = err;
       console.error(
-        "[SensitiveDataDetectorExtension] Backend error, blocking send:",
+        "[MinosVerdictExtension] Backend error, blocking send:",
         err,
       );
     } finally {

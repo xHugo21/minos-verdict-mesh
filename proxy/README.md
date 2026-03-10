@@ -1,6 +1,6 @@
-# Transparent Proxy for LLM API Sensitive Data Detection
+# Transparent Proxy for LLM API Guardrails
 
-A transparent HTTP/HTTPS proxy built with `mitmproxy` that intercepts LLM API requests and blocks requests containing sensitive data before they reach the API providers.
+A transparent HTTP/HTTPS proxy built with `mitmproxy` that intercepts LLM API requests and blocks requests that violate configured guardrails before they reach the API providers.
 
 > [!NOTE]
 > Proxy only analyses prompt data from the role: 'user'. This avoids having false positives from system prompts included by external apps.
@@ -17,7 +17,7 @@ cp .env.example .env
 
 ### 1. Start the Backend
 
-First, ensure the sensitive-data-detector backend is running
+First, ensure the Minos Verdict backend is running
 
 ### 2. Start the Proxy
 
@@ -57,14 +57,14 @@ npm config set cafile ~/.mitmproxy/mitmproxy-ca-cert.pem
 
 Now any HTTP (or HTTPS) requests to configured endpoints will be intercepted:
 
-If sensitive data is detected, the request will be blocked with a 403 response:
+If a guardrail violation is detected, the request will be blocked with a 403 response:
 
 ## How It Works
 
 1. **Interception**: mitmproxy intercepts all HTTP/HTTPS requests
 2. **Filtering**: Only requests to configured hosts/paths are analyzed
 3. **Extraction**: Request payloads are parsed to extract text and images
-4. **Detection**: Content is sent to the backend for sensitive data detection
+4. **Evaluation**: Content is sent to the backend for multiagent policy evaluation
 5. **Blocking**: If risk level exceeds threshold, request is blocked with 403
 6. **Forwarding**: Safe requests are forwarded to the original destination
 7. **Headers**: Detection metadata is added to response headers
@@ -74,7 +74,7 @@ If sensitive data is detected, the request will be blocked with a 403 response:
 The proxy adds detection metadata to response headers:
 
 - **`X-LLM-Guard-Risk-Level`**: Detected risk level (None, Low, Medium, High)
-- **`X-LLM-Guard-Detected-Fields`**: Comma-separated list of detected sensitive fields
+- **`X-LLM-Guard-Detected-Fields`**: Comma-separated list of detected findings
 
 ## Limitations
 
@@ -110,7 +110,7 @@ curl -v -x http://127.0.0.1:8080 \
 ```
 
 ### Image Request (OpenAI Format)
-Test image analysis with a base64-encoded image containing sensitive data:
+Test image analysis with a base64-encoded image containing content that should trigger the configured guardrails:
 
 ```bash
 curl -v -x http://127.0.0.1:8080 \

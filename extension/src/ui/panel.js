@@ -447,7 +447,7 @@
       }
     } else {
       const empty = document.createElement("div");
-      empty.textContent = "No sensitive fields detected.";
+      empty.textContent = "No findings detected.";
       empty.style.padding = "12px";
       empty.style.borderRadius = "10px";
       empty.style.background = "rgba(255,255,255,0.02)";
