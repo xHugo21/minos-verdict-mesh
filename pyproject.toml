@@ -1,7 +1,7 @@
 [project]
 name = "minos-verdict-mesh"
 version = "0.1.0"
-description = "Architecture for sensitive data detection in LLM interactions"
+description = "Multiagent guardrail architecture for LLM interactions"
 authors = [{ name = "Hugo Garcia" }]
 requires-python = ">=3.10"
 dependencies = []

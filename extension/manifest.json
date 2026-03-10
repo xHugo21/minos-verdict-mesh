@@ -1,6 +1,6 @@
 {
   "name": "Minos Verdict",
-  "description": "Detect and prevent private data leakage in user-LLM interactions.",
+  "description": "Inspect and enforce guardrails in LLM interactions.",
   "version": "1.0.0",
   "manifest_version": 3,
   "icons": { "128": "icon128.png" },
@@ -10,10 +10,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://chatgpt.com/*",
-        "https://gemini.google.com/*"
-      ],
+      "matches": ["https://chatgpt.com/*", "https://gemini.google.com/*"],
       "js": [
         "src/config.js",
         "src/state/settings.js",
@@ -37,8 +34,5 @@
     }
   ],
   "permissions": ["storage", "activeTab"],
-  "host_permissions": [
-    "http://127.0.0.1:8000/*",
-    "http://localhost:8000/*"
-  ]
+  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"]
 }
