@@ -1,8 +1,16 @@
-# 🛡️ Minos Verdict Mesh
+<div align="center">
+    <br/>
+    <p>
+        <img width="120" title="Minos Verdict" alt="minos-verdict-logo" src="https://github.com/user-attachments/assets/5f048060-c52c-4da7-958e-034b2959e7b6" />
+        <h1>Minos Verdict Mesh</h1>
+    </p>
+    <p width="120">
+        Modular architecture to inspect, evaluate, and enforce guardrails in LLM interactions.
+    </p>
+    <br/>
+</div>
 
-Modular architecture to inspect, evaluate, and enforce guardrails in LLM interactions.
-
-## 🔄 Architecture
+## Architecture
 
 ```mermaid
 flowchart TB
@@ -42,7 +50,7 @@ flowchart TB
     linkStyle default stroke:#000,stroke-width:2px
 ```
 
-## 🛠️ Set up 
+## Set up 
 
 ### 1. uv
 Install [uv](https://docs.astral.sh/uv/#installation) (modern Python package manager):
@@ -80,6 +88,6 @@ Detailed information on how to run the proxy package under `proxy/README.md`
 
 The proxy will act as a middleman between the user and any listed endpoint under `proxy/.env`
 
-## 📜 License
+## License
 
 MIT license.
