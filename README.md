@@ -1,20 +1,6 @@
 # 🛡️ Minos Verdict Mesh
 
-Modular architecture to inspect, evaluate, and enforce guardrails for user-LLM interactions.
-
-## 📦 Packages
-
-### 🧱 Multiagent Firewall
-Implements a LangGraph-based multiagent firewall for policy evaluation, guardrails, and extensible risk analysis.
-
-### 🔌 Backend
-Provides a FastAPI server as a bridge to connect proxy and extension packages with the multiagent firewall
-
-### 🌐 Extension
-Chromium based extension that analyzes user and LLM interactions to surface findings and provide feedback to the user within the browser.
-
-### 🧩 Proxy
-Protect user and LLM interactions via command-line clients, IDEs or applications by routing their LLM API calls through the multiagent firewall.
+Modular architecture to inspect, evaluate, and enforce guardrails in LLM interactions.
 
 ## 🔄 Architecture
 
