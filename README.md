@@ -1,7 +1,7 @@
 <div align="center">
     <br/>
     <p>
-        <img width="120" title="Minos Verdict" alt="minos-verdict-logo" src="https://github.com/user-attachments/assets/5f048060-c52c-4da7-958e-034b2959e7b6" />
+        <img width="120" title="Minos Verdict" alt="minos-verdict-logo" src="assets/minos-verdict-logo.png" />
         <h1>Minos Verdict Mesh</h1>
     </p>
     <p width="120">
