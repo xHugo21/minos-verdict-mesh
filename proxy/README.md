@@ -13,6 +13,10 @@ Copy `.env.example` to `.env` and configure its values:
 cp .env.example .env
 ```
 
+An optional `BACKEND_AUTH_TOKEN` can be configured to authenticate proxy requests to the backend. If provided, the same value must be set in `backend/.env`.
+
+Additionally, an optional `PROXY_AUTH_HTPASSWD_FILE` enables client authentication to the proxy itself using an htpasswd file.
+
 ## Usage
 
 ### 1. Start the Backend
@@ -33,6 +37,13 @@ Set the proxy environment variables in your shell:
 ```bash
 export HTTP_PROXY=http://127.0.0.1:8080
 export HTTPS_PROXY=http://127.0.0.1:8080
+```
+
+If client authentication is enabled, include credentials in the proxy URL:
+
+```bash
+export HTTP_PROXY=http://user:pass@127.0.0.1:8080
+export HTTPS_PROXY=http://user:pass@127.0.0.1:8080
 ```
 
 ### 4. HTTPS interception
@@ -68,6 +79,8 @@ If a guardrail violation is detected, the request will be blocked with a 403 res
 5. **Blocking**: If risk level exceeds threshold, request is blocked with 403
 6. **Forwarding**: Safe requests are forwarded to the original destination
 7. **Headers**: Detection metadata is added to response headers
+
+If the proxy cannot analyze an intercepted request, it follows a fail-closed policy and returns a local `403` error instead of forwarding unchecked content.
 
 ## Response Headers
 

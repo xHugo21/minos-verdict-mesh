@@ -10,6 +10,23 @@ from app import llm_request_guard
 from app.llm_request_guard import LLMRequestGuard
 
 
+def _load_proxy_main_module():
+    import importlib.util
+    from pathlib import Path
+    import sys
+
+    module_path = Path(__file__).resolve().parents[1] / "app" / "main.py"
+    app_package_root = str(module_path.parents[1])
+    if app_package_root not in sys.path:
+        sys.path.insert(0, app_package_root)
+    spec = importlib.util.spec_from_file_location("proxy_main_for_tests", module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError("Could not load proxy app.main")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def make_flow(
     body: str | bytes, url: str = "https://api.openai.com/v1/chat/completions"
 ):
@@ -172,6 +189,28 @@ def test_ask_backend_posts_to_configured_url(
         }
 
 
+def test_ask_backend_adds_auth_header_when_configured(
+    interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
+):
+    from unittest.mock import Mock, patch
+
+    monkeypatch.setattr(llm_request_guard.config, "BACKEND_AUTH_TOKEN", "secret-token")
+
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"risk_level": "none", "detected_fields": []}
+
+    with patch("app.llm_request_guard.httpx.Client") as mock_client:
+        mock_client.return_value.__enter__.return_value.post.return_value = (
+            mock_response
+        )
+
+        interceptor._ask_backend("test text")
+
+        call_args = mock_client.return_value.__enter__.return_value.post.call_args
+        assert call_args[1]["headers"] == {"Authorization": "Bearer secret-token"}
+
+
 def test_request_blocks_invalid_json_payload(interceptor: LLMRequestGuard):
     flow = make_flow(b"{not-json")
 
@@ -239,3 +278,51 @@ def test_should_intercept_matches_gemini_host_when_path_is_configured(
     )
 
     assert interceptor._should_intercept(flow)
+
+
+def test_build_mitmdump_argv_omits_proxyauth_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    monkeypatch.setattr(proxy_main, "get_proxy_auth_spec", lambda: None)
+
+    argv = proxy_main.build_mitmdump_argv()
+
+    assert "--proxyauth" not in argv
+
+
+def test_build_mitmdump_argv_adds_proxyauth_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    monkeypatch.setattr(proxy_main, "get_proxy_auth_spec", lambda: "user:pass")
+
+    argv = proxy_main.build_mitmdump_argv()
+
+    proxyauth_index = argv.index("--proxyauth")
+    assert argv[proxyauth_index + 1] == "user:pass"
+
+
+def test_get_proxy_auth_spec_returns_none_without_htpasswd(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    config = proxy_main.get_proxy_auth_spec.__globals__
+
+    monkeypatch.setitem(config, "PROXY_AUTH_HTPASSWD_FILE", "")
+
+    assert proxy_main.get_proxy_auth_spec() is None
+
+
+def test_get_proxy_auth_spec_supports_htpasswd_file(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from pathlib import Path
+
+    proxy_main = _load_proxy_main_module()
+    config = proxy_main.get_proxy_auth_spec.__globals__
+
+    monkeypatch.setitem(config, "PROXY_AUTH_HTPASSWD_FILE", "~/.config/minos/htpasswd")
+
+    expected_path = Path("~/.config/minos/htpasswd").expanduser()
+    assert proxy_main.get_proxy_auth_spec() == f"@{expected_path}"

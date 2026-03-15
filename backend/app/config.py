@@ -40,3 +40,6 @@ GUARD_CONFIG = GuardConfig.from_env()
 
 # Hardcoded default block level (most restrictive: low)
 DEFAULT_BLOCK_LEVEL = "low"
+
+
+BACKEND_AUTH_TOKEN = os.getenv("BACKEND_AUTH_TOKEN", "").strip()
