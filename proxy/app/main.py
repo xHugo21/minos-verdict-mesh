@@ -4,8 +4,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from mitmproxy.tools import main as mitmproxy_main
-
 try:
     from .config import PROXY_HOST, PROXY_PORT, get_proxy_auth_spec
 except ImportError:
@@ -50,6 +48,8 @@ def build_mitmdump_argv() -> list[str]:
 
 
 def run_proxy():
+    from mitmproxy.tools import main as mitmproxy_main
+
     sys.argv = build_mitmdump_argv()
 
     print(f"Starting mitmproxy on {PROXY_HOST}:{PROXY_PORT}")

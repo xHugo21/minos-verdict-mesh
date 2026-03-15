@@ -317,9 +317,12 @@ def test_get_proxy_auth_spec_returns_none_without_htpasswd(
 def test_get_proxy_auth_spec_supports_htpasswd_file(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    from pathlib import Path
+
     proxy_main = _load_proxy_main_module()
     config = proxy_main.get_proxy_auth_spec.__globals__
 
     monkeypatch.setitem(config, "PROXY_AUTH_HTPASSWD_FILE", "~/.config/minos/htpasswd")
 
-    assert proxy_main.get_proxy_auth_spec() == "@/home/xhugo21/.config/minos/htpasswd"
+    expected_path = Path("~/.config/minos/htpasswd").expanduser()
+    assert proxy_main.get_proxy_auth_spec() == f"@{expected_path}"
