@@ -1,18 +1,35 @@
 from __future__ import annotations
 
 import base64
+import importlib.util
 import io
 import json
+from pathlib import Path
 from typing import Any, Dict
 
 import httpx
 from mitmproxy import http
 from mitmproxy.http import HTTPFlow
 
-from app import config
+try:
+    from . import config
+except ImportError:
+    from app import config
+
+if not hasattr(config, "INTERCEPTED_HOSTS"):
+    config_spec = importlib.util.spec_from_file_location(
+        "proxy_local_config",
+        Path(__file__).with_name("config.py"),
+    )
+    if config_spec is None or config_spec.loader is None:
+        raise ImportError("Could not load proxy config module")
+    config = importlib.util.module_from_spec(config_spec)
+    config_spec.loader.exec_module(config)
 
 
 class LLMRequestGuard:
+    DETECTION_RESULT_KEY = "detection_result"
+
     def __init__(self):
         self.intercepted_hosts = config.INTERCEPTED_HOSTS
         self.intercepted_paths = config.INTERCEPTED_PATHS
@@ -216,7 +233,23 @@ class LLMRequestGuard:
                     role = item.get("role")
                     if role != "user":
                         continue
-                    text = self._stringify(item.get("content"))
+                    content = item.get("content")
+                    if isinstance(content, list):
+                        text = "\n".join(
+                            filter(
+                                None,
+                                (
+                                    part
+                                    if isinstance(part, str)
+                                    else part.get("text", "")
+                                    if isinstance(part, dict)
+                                    else ""
+                                    for part in content
+                                ),
+                            )
+                        )
+                    else:
+                        text = self._stringify(content)
                     if text:
                         chunks.append(text.strip())
                 if chunks:
@@ -274,7 +307,9 @@ class LLMRequestGuard:
         if field_names:
             message = f"[MinosVerdictBackend] Guardrail violation detected: {field_names}. Request blocked."
         else:
-            message = "[MinosVerdictBackend] Guardrail violation detected. Request blocked."
+            message = (
+                "[MinosVerdictBackend] Guardrail violation detected. Request blocked."
+            )
 
         payload = {
             "error": {
@@ -296,14 +331,39 @@ class LLMRequestGuard:
             },
         )
 
+    def _create_analysis_error_response(self, flow: HTTPFlow, reason: str) -> None:
+        payload = {
+            "error": {
+                "message": f"[MinosVerdictBackend] Request blocked because it could not be analyzed: {reason}.",
+                "type": "analysis_unavailable",
+                "code": "analysis_unavailable",
+            },
+            "detected_fields": [],
+            "risk_level": "unknown",
+            "remediation": "Retry the request or inspect proxy/backend configuration.",
+        }
+
+        flow.response = http.Response.make(
+            status_code=403,
+            content=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "X-LLM-Guard-Risk-Level": "unknown",
+            },
+        )
+
+    def _store_detection_result(self, flow: HTTPFlow, result: Dict[str, Any]) -> None:
+        flow.metadata[self.DETECTION_RESULT_KEY] = result
+
     def request(self, flow: HTTPFlow) -> None:
         if not self._should_intercept(flow):
             return
 
         try:
-            body_text = flow.request.content.decode("utf-8")
+            body_text = (flow.request.content or b"").decode("utf-8")
             payload = json.loads(body_text or "{}")
         except (UnicodeDecodeError, json.JSONDecodeError):
+            self._create_analysis_error_response(flow, "invalid JSON payload")
             return
 
         # Extract text content and images once
@@ -320,13 +380,19 @@ class LLMRequestGuard:
             # Text only
             result = self._ask_backend(text_to_check)
         else:
-            # Nothing to check
+            self._create_analysis_error_response(
+                flow, "no supported text or image content found"
+            )
             return
 
         # Check result once
         if result is None:
-            # Backend error, allow request to continue
+            self._create_analysis_error_response(
+                flow, "backend detection service unavailable"
+            )
             return
+
+        self._store_detection_result(flow, result)
 
         if self._should_block(result):
             self._create_block_response(flow, result)
@@ -335,10 +401,14 @@ class LLMRequestGuard:
         if not self._should_intercept(flow):
             return
 
-        if not hasattr(flow, "_detection_result"):
+        if flow.response is None:
             return
 
-        for key, value in self._detection_headers(flow._detection_result).items():
+        result = flow.metadata.get(self.DETECTION_RESULT_KEY)
+        if not isinstance(result, dict):
+            return
+
+        for key, value in self._detection_headers(result).items():
             flow.response.headers[key] = value
 
 

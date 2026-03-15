@@ -1,8 +1,25 @@
 from __future__ import annotations
 
-import pytest
+import json
 
+import pytest
+from mitmproxy import http
+from mitmproxy.test.tflow import tflow
+
+from app import llm_request_guard
 from app.llm_request_guard import LLMRequestGuard
+
+
+def make_flow(
+    body: str | bytes, url: str = "https://api.openai.com/v1/chat/completions"
+):
+    request = http.Request.make(
+        "POST",
+        url,
+        content=body,
+        headers={"Content-Type": "application/json"},
+    )
+    return tflow(req=request)
 
 
 @pytest.fixture
@@ -122,6 +139,7 @@ def test_should_intercept_ignores_non_configured_paths(
 def test_ask_backend_handles_empty_text(interceptor: LLMRequestGuard):
     result = interceptor._ask_backend("")
 
+    assert result is not None
     assert result["risk_level"] == "none"
     assert result["detected_fields"] == []
 
@@ -129,11 +147,10 @@ def test_ask_backend_handles_empty_text(interceptor: LLMRequestGuard):
 def test_ask_backend_posts_to_configured_url(
     interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
 ):
-    from app import config
     from unittest.mock import Mock, patch
 
     mock_url = "http://backend.test/detect"
-    monkeypatch.setattr(config, "BACKEND_URL", mock_url)
+    monkeypatch.setattr(llm_request_guard.config, "BACKEND_URL", mock_url)
 
     mock_response = Mock()
     mock_response.status_code = 200
@@ -151,5 +168,74 @@ def test_ask_backend_posts_to_configured_url(
         assert call_args[0][0] == mock_url
         assert call_args[1]["data"] == {
             "text": "test text",
-            "min_block_level": config.MIN_BLOCK_LEVEL,
+            "min_block_level": llm_request_guard.config.MIN_BLOCK_LEVEL,
         }
+
+
+def test_request_blocks_invalid_json_payload(interceptor: LLMRequestGuard):
+    flow = make_flow(b"{not-json")
+
+    interceptor.request(flow)
+
+    assert flow.response is not None
+    assert flow.response.status_code == 403
+    assert flow.response.json()["error"]["code"] == "analysis_unavailable"
+
+
+def test_request_blocks_when_backend_is_unavailable(
+    interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
+):
+    flow = make_flow(json.dumps({"messages": [{"role": "user", "content": "hello"}]}))
+    monkeypatch.setattr(interceptor, "_ask_backend", lambda text: None)
+
+    interceptor.request(flow)
+
+    assert flow.response is not None
+    assert flow.response.status_code == 403
+    assert flow.response.json()["error"]["code"] == "analysis_unavailable"
+
+
+def test_request_stores_detection_result_for_response_hook(
+    interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
+):
+    flow = make_flow(json.dumps({"messages": [{"role": "user", "content": "hello"}]}))
+    result = {
+        "decision": "allow",
+        "risk_level": "low",
+        "detected_fields": [{"field": "email"}],
+    }
+    monkeypatch.setattr(interceptor, "_ask_backend", lambda text: result)
+
+    interceptor.request(flow)
+
+    assert flow.metadata[interceptor.DETECTION_RESULT_KEY] == result
+
+
+def test_response_adds_detection_headers_from_flow_metadata(
+    interceptor: LLMRequestGuard,
+):
+    flow = make_flow(json.dumps({"messages": [{"role": "user", "content": "hello"}]}))
+    flow.response = http.Response.make(200, b"ok")
+    flow.metadata[interceptor.DETECTION_RESULT_KEY] = {
+        "risk_level": "medium",
+        "detected_fields": [{"field": "password"}],
+    }
+
+    interceptor.response(flow)
+
+    assert flow.response.headers["X-LLM-Guard-Risk-Level"] == "medium"
+    assert flow.response.headers["X-LLM-Guard-Detected-Fields"] == "password"
+
+
+def test_should_intercept_matches_gemini_host_when_path_is_configured(
+    interceptor: LLMRequestGuard,
+):
+    interceptor.intercepted_hosts = ["generativelanguage.googleapis.com"]
+    interceptor.intercepted_paths = ["/v1/chat/completions"]
+
+    flow = make_flow(
+        json.dumps({"contents": [{"parts": [{"text": "hello"}]}]}),
+        url="https://generativelanguage.googleapis.com/v1/chat/completions",
+    )
+
+    assert interceptor._should_intercept(flow)
