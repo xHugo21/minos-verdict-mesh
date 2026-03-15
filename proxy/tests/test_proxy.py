@@ -172,6 +172,28 @@ def test_ask_backend_posts_to_configured_url(
         }
 
 
+def test_ask_backend_adds_auth_header_when_configured(
+    interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
+):
+    from unittest.mock import Mock, patch
+
+    monkeypatch.setattr(llm_request_guard.config, "BACKEND_AUTH_TOKEN", "secret-token")
+
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"risk_level": "none", "detected_fields": []}
+
+    with patch("app.llm_request_guard.httpx.Client") as mock_client:
+        mock_client.return_value.__enter__.return_value.post.return_value = (
+            mock_response
+        )
+
+        interceptor._ask_backend("test text")
+
+        call_args = mock_client.return_value.__enter__.return_value.post.call_args
+        assert call_args[1]["headers"] == {"Authorization": "Bearer secret-token"}
+
+
 def test_request_blocks_invalid_json_payload(interceptor: LLMRequestGuard):
     flow = make_flow(b"{not-json")
 

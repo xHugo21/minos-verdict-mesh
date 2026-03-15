@@ -166,6 +166,7 @@ class LLMRequestGuard:
             Detection result dict or None on error
         """
         detect_url = config.BACKEND_URL
+        headers = self._backend_headers()
 
         files_to_send = []
         for idx, image_data in enumerate(images):
@@ -194,7 +195,12 @@ class LLMRequestGuard:
         try:
             with httpx.Client(timeout=config.BACKEND_TIMEOUT_SECONDS) as client:
                 data = {"text": text, "min_block_level": config.MIN_BLOCK_LEVEL}
-                response = client.post(detect_url, files=files_to_send, data=data)
+                response = client.post(
+                    detect_url,
+                    files=files_to_send,
+                    data=data,
+                    headers=headers,
+                )
 
             if response.status_code >= 400:
                 return None
@@ -265,11 +271,12 @@ class LLMRequestGuard:
 
         data = {"text": text, "min_block_level": config.MIN_BLOCK_LEVEL}
         detect_url = config.BACKEND_URL
+        headers = self._backend_headers()
 
         try:
             with httpx.Client(timeout=config.BACKEND_TIMEOUT_SECONDS) as client:
                 # Send as form-data (not JSON) to match backend's expected format
-                response = client.post(detect_url, data=data)
+                response = client.post(detect_url, data=data, headers=headers)
 
             if response.status_code >= 400:
                 return None
@@ -281,6 +288,11 @@ class LLMRequestGuard:
     def _should_block(self, result: Dict[str, Any]) -> bool:
         decision = (result.get("decision") or "").strip().lower()
         return decision == "block"
+
+    def _backend_headers(self) -> Dict[str, str]:
+        if not config.BACKEND_AUTH_TOKEN:
+            return {}
+        return {"Authorization": f"Bearer {config.BACKEND_AUTH_TOKEN}"}
 
     def _detection_headers(self, result: Dict[str, Any]) -> Dict[str, str]:
         headers: Dict[str, str] = {}

@@ -30,6 +30,7 @@ BACKEND_URL = os.getenv(
 ).rstrip("/")
 BACKEND_TIMEOUT_SECONDS = _parse_float(os.getenv("BACKEND_TIMEOUT_SECONDS"), 30.0)
 MIN_BLOCK_LEVEL = os.getenv("MIN_BLOCK_LEVEL", "low")
+BACKEND_AUTH_TOKEN = os.getenv("BACKEND_AUTH_TOKEN", "").strip()
 
 PROXY_HOST = os.getenv("PROXY_HOST", "127.0.0.1")
 PROXY_PORT = _parse_int(os.getenv("PROXY_PORT"), 8080)

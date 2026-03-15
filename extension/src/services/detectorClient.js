@@ -31,11 +31,20 @@
     return payload;
   }
 
+  function buildHeaders() {
+    const headers = {};
+    if (sg.config.BACKEND_AUTH_TOKEN) {
+      headers.Authorization = `Bearer ${sg.config.BACKEND_AUTH_TOKEN}`;
+    }
+    return headers;
+  }
+
   async function requestDetect(formData) {
     let resp;
     try {
       resp = await fetch(`${sg.config.API_BASE}/detect`, {
         method: "POST",
+        headers: buildHeaders(),
         body: formData,
       });
     } catch (err) {

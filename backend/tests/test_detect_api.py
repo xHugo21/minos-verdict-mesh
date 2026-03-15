@@ -14,6 +14,10 @@ class DummyOrchestrator:
         return {"detected_fields": [{"field": "EMAIL"}], "risk_level": "low"}
 
 
+def _auth_headers(token: str = "test-token"):
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_detect_endpoint_with_text_uses_orchestrator(monkeypatch):
     """Test detect endpoint with text parameter"""
     dummy = DummyOrchestrator("dummy-config")
@@ -197,3 +201,45 @@ def test_detect_endpoint_max_files_limit(monkeypatch, tmp_path):
     assert "detail" in body
     assert "Too many files" in body["detail"]
     assert "10" in body["detail"]
+
+
+def test_detect_endpoint_requires_auth_when_token_configured(monkeypatch):
+    monkeypatch.setattr(detect_route, "BACKEND_AUTH_TOKEN", "test-token")
+
+    client = TestClient(app)
+    resp = client.post("/detect", data={"text": "hello"})
+
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Unauthorized"
+
+
+def test_detect_endpoint_accepts_bearer_auth(monkeypatch):
+    dummy = DummyOrchestrator("dummy-config")
+    monkeypatch.setattr(detect_route, "GUARD_CONFIG", "dummy-config")
+    monkeypatch.setattr(detect_route, "DEFAULT_BLOCK_LEVEL", "medium")
+    monkeypatch.setattr(detect_route, "GuardOrchestrator", lambda config: dummy)
+    monkeypatch.setattr(detect_route, "BACKEND_AUTH_TOKEN", "test-token")
+
+    client = TestClient(app)
+    resp = client.post("/detect", data={"text": "hello"}, headers=_auth_headers())
+
+    assert resp.status_code == 200
+    assert dummy.calls[0][0] == "hello"
+
+
+def test_detect_endpoint_accepts_header_token(monkeypatch):
+    dummy = DummyOrchestrator("dummy-config")
+    monkeypatch.setattr(detect_route, "GUARD_CONFIG", "dummy-config")
+    monkeypatch.setattr(detect_route, "DEFAULT_BLOCK_LEVEL", "medium")
+    monkeypatch.setattr(detect_route, "GuardOrchestrator", lambda config: dummy)
+    monkeypatch.setattr(detect_route, "BACKEND_AUTH_TOKEN", "test-token")
+
+    client = TestClient(app)
+    resp = client.post(
+        "/detect",
+        data={"text": "hello"},
+        headers={"X-Backend-Auth-Token": "test-token"},
+    )
+
+    assert resp.status_code == 200
+    assert dummy.calls[0][0] == "hello"

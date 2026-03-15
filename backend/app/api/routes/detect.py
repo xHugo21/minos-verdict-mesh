@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Header
 from typing import Optional, Tuple, Dict, Any, List
 
 from app.utils import debug_log
@@ -16,12 +16,41 @@ from multiagent_firewall.utils import (
     validate_mime_type,
     validate_path_traversal,
 )
-from app.config import GUARD_CONFIG, DEFAULT_BLOCK_LEVEL
+from app.config import GUARD_CONFIG, DEFAULT_BLOCK_LEVEL, BACKEND_AUTH_TOKEN
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_SNIPPET_LENGTH = 400
+
+
+def _extract_bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def _ensure_authorized(
+    authorization: str | None, x_backend_auth_token: str | None
+) -> None:
+    if not BACKEND_AUTH_TOKEN:
+        return
+
+    candidates = []
+    bearer_token = _extract_bearer_token(authorization)
+    if bearer_token:
+        candidates.append(bearer_token)
+    if x_backend_auth_token and x_backend_auth_token.strip():
+        candidates.append(x_backend_auth_token.strip())
+
+    if any(token == BACKEND_AUTH_TOKEN for token in candidates):
+        return
+
+    raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 async def _validate_and_save_uploaded_file(
@@ -68,9 +97,7 @@ async def _validate_and_save_uploaded_file(
         raise HTTPException(status_code=413, detail=str(e))
 
     try:
-        debug_log(
-            f"[MinosVerdictBackend] Saved file to {tmp_path} ({file_size} bytes)"
-        )
+        debug_log(f"[MinosVerdictBackend] Saved file to {tmp_path} ({file_size} bytes)")
 
         file_type_def = FILE_TYPE_CONFIG.get_by_extension(file.filename or "")
         if not file_type_def:
@@ -120,6 +147,8 @@ async def detect(
     text: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
     min_block_level: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None),
+    x_backend_auth_token: Optional[str] = Header(None),
 ):
     """
     Unified detection endpoint
@@ -133,6 +162,7 @@ async def detect(
         Detection results from multiagent-firewall package
     """
     try:
+        _ensure_authorized(authorization, x_backend_auth_token)
         block_level = min_block_level or DEFAULT_BLOCK_LEVEL
 
         if not text and not files:
