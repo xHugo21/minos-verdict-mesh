@@ -13,7 +13,9 @@ Copy `.env.example` to `.env` and configure its values:
 cp .env.example .env
 ```
 
-An optional `BACKEND_AUTH_TOKEN` can be configured to provide additional authentication. If provided, same value must be set on `/backend/.env`.
+An optional `BACKEND_AUTH_TOKEN` can be configured to authenticate proxy requests to the backend. If provided, the same value must be set in `backend/.env`.
+
+Additionally, an optional `PROXY_AUTH_HTPASSWD_FILE` enables client authentication to the proxy itself using an htpasswd file.
 
 ## Usage
 
@@ -35,6 +37,13 @@ Set the proxy environment variables in your shell:
 ```bash
 export HTTP_PROXY=http://127.0.0.1:8080
 export HTTPS_PROXY=http://127.0.0.1:8080
+```
+
+If client authentication is enabled, include credentials in the proxy URL:
+
+```bash
+export HTTP_PROXY=http://user:pass@127.0.0.1:8080
+export HTTPS_PROXY=http://user:pass@127.0.0.1:8080
 ```
 
 ### 4. HTTPS interception

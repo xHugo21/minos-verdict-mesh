@@ -10,6 +10,23 @@ from app import llm_request_guard
 from app.llm_request_guard import LLMRequestGuard
 
 
+def _load_proxy_main_module():
+    import importlib.util
+    from pathlib import Path
+    import sys
+
+    module_path = Path(__file__).resolve().parents[1] / "app" / "main.py"
+    app_package_root = str(module_path.parents[1])
+    if app_package_root not in sys.path:
+        sys.path.insert(0, app_package_root)
+    spec = importlib.util.spec_from_file_location("proxy_main_for_tests", module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError("Could not load proxy app.main")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def make_flow(
     body: str | bytes, url: str = "https://api.openai.com/v1/chat/completions"
 ):
@@ -261,3 +278,48 @@ def test_should_intercept_matches_gemini_host_when_path_is_configured(
     )
 
     assert interceptor._should_intercept(flow)
+
+
+def test_build_mitmdump_argv_omits_proxyauth_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    monkeypatch.setattr(proxy_main, "get_proxy_auth_spec", lambda: None)
+
+    argv = proxy_main.build_mitmdump_argv()
+
+    assert "--proxyauth" not in argv
+
+
+def test_build_mitmdump_argv_adds_proxyauth_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    monkeypatch.setattr(proxy_main, "get_proxy_auth_spec", lambda: "user:pass")
+
+    argv = proxy_main.build_mitmdump_argv()
+
+    proxyauth_index = argv.index("--proxyauth")
+    assert argv[proxyauth_index + 1] == "user:pass"
+
+
+def test_get_proxy_auth_spec_returns_none_without_htpasswd(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    config = proxy_main.get_proxy_auth_spec.__globals__
+
+    monkeypatch.setitem(config, "PROXY_AUTH_HTPASSWD_FILE", "")
+
+    assert proxy_main.get_proxy_auth_spec() is None
+
+
+def test_get_proxy_auth_spec_supports_htpasswd_file(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    proxy_main = _load_proxy_main_module()
+    config = proxy_main.get_proxy_auth_spec.__globals__
+
+    monkeypatch.setitem(config, "PROXY_AUTH_HTPASSWD_FILE", "~/.config/minos/htpasswd")
+
+    assert proxy_main.get_proxy_auth_spec() == "@/home/xhugo21/.config/minos/htpasswd"

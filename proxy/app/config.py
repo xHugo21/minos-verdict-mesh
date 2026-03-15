@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,6 +36,14 @@ BACKEND_AUTH_TOKEN = os.getenv("BACKEND_AUTH_TOKEN", "").strip()
 
 PROXY_HOST = os.getenv("PROXY_HOST", "127.0.0.1")
 PROXY_PORT = _parse_int(os.getenv("PROXY_PORT"), 8080)
+PROXY_AUTH_HTPASSWD_FILE = os.getenv("PROXY_AUTH_HTPASSWD_FILE", "").strip()
+
+
+def get_proxy_auth_spec() -> str | None:
+    if PROXY_AUTH_HTPASSWD_FILE:
+        return f"@{Path(PROXY_AUTH_HTPASSWD_FILE).expanduser()}"
+    return None
+
 
 INTERCEPTED_HOSTS = _parse_list(
     os.getenv("INTERCEPTED_HOSTS"),
