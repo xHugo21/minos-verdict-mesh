@@ -21,6 +21,8 @@ uv run python -m app.main
 
 The backend should be accessible at `http://127.0.0.1:8000` (configurable in `src/config.js`).
 
+An optional `BACKEND_AUTH_TOKEN` can be configured to provide additional authentication from `src/config.js`. If provided, same value must be set on `/backend/.env`.
+
 ### Loading the Extension
 
 1. Open Chrome and navigate to `chrome://extensions/`

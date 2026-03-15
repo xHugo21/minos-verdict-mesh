@@ -13,6 +13,8 @@ Copy `.env.example` to `.env` and configure its values:
 cp .env.example .env
 ```
 
+An optional `BACKEND_AUTH_TOKEN` can be configured to provide additional authentication. If provided, same value must be set on `/backend/.env`.
+
 ## Usage
 
 ### 1. Start the Backend
@@ -68,6 +70,8 @@ If a guardrail violation is detected, the request will be blocked with a 403 res
 5. **Blocking**: If risk level exceeds threshold, request is blocked with 403
 6. **Forwarding**: Safe requests are forwarded to the original destination
 7. **Headers**: Detection metadata is added to response headers
+
+If the proxy cannot analyze an intercepted request, it follows a fail-closed policy and returns a local `403` error instead of forwarding unchecked content.
 
 ## Response Headers
 
