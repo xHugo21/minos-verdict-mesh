@@ -19,9 +19,9 @@ flowchart TB
         EXT[Extension]
         LLMCHATBOT[LLM Chatbot Website]
         
-        USER1 -->|text / file| EXT
+        USER1 -->|prompt / file| EXT
         EXT -->|warns about detection results| USER1
-        EXT -.->|forwards when safe or allowed by the user| LLMCHATBOT
+        EXT -.->|forwards when safe| LLMCHATBOT
     end
     subgraph SystemWide["💻 API Usage"]
         USER2[User on CLI/IDE/App]
@@ -33,13 +33,13 @@ flowchart TB
         PROXY -.->|forwards when safe| LLMAPI
     end
     subgraph Backend["🔌 Backend"]
-        API[FastAPI Server<br/><small>/detect endpoint</small>]
-        FIREWALL[Multiagent Firewall<br/><small>LangGraph Pipeline</small>]
+        API[FastAPI Server]
+        FIREWALL[Multiagent Firewall]
         API -->|invoke | FIREWALL
         FIREWALL -->|detection result| API
     end
-    EXT -->|POST /detect<br/>text or files| API
-    PROXY -->|POST /detect<br/>text or files| API
+    EXT -->|POST /detect| API
+    PROXY -->|POST /detect| API
     
     API -->|detection result| EXT
     API -->|detection result| PROXY
@@ -53,16 +53,22 @@ flowchart TB
 ## Set up 
 
 ### 1. uv
-Install [uv](https://docs.astral.sh/uv/#installation) (modern Python package manager):
+Install [uv](https://docs.astral.sh/uv/#installation)
 
 ### 2. Configure package options
-- `backend`: Copy `backend/.env.example` to `backend/.env` (server settings).
-- `multiagent-firewall`: Copy `multiagent-firewall/.env.example` to `multiagent-firewall/.env` (LLM, OCR, NER settings). Customize detection pipeline via `multiagent-firewall/config/pipeline.json` and detection options via `multiagent-firewall/config/detection.json`.
-- `proxy`: Copy `proxy/.env.example` to `proxy/.env` and configure to your liking.
-- `extension`: Modify `extension/src/config.js`
+
+| Package | Configuration files |
+| --- | --- |
+| `backend` | `backend/.env` |
+| `proxy` | `proxy/.env` |
+| `extension` | `extension/src/config.js` |
+| `multiagent-firewall` | `multiagent-firewall/.env`, `multiagent-firewall/config/detection.json` and `multiagent-firewall/config/pipeline.json` |
+
+> [!NOTE]
+> All `.env` configuration files must be manually created. An `.env.example` of each is uploaded for reference.
 
 ### 3. Run backend server
-The backend package simplifies the connection between the `proxy` and `extension` modules.
+The backend package simplifies the connection between the sensor and the firewall package.
 
 ```bash
 cd backend && uv sync && uv run python -m app.main
@@ -80,7 +86,7 @@ cd backend && uv sync && uv run python -m app.main
 2. Toggle on "Developer mode"
 3. Click "Load unpacked" → choose path to `minos-verdict-mesh/extension/`
 
-The extension will intercept web chatbot interactions (ChatGPT, Gemini...) and provide feedback to the user about policy findings and configured guardrail decisions.
+The extension will intercept web chatbot interactions and provide feedback to the user about policy findings and configured guardrail decisions.
 
 ### 4b. Run proxy
 
