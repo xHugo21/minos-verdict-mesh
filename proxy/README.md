@@ -80,6 +80,8 @@ If a guardrail violation is detected, the request will be blocked with a 403 res
 6. **Forwarding**: Safe requests are forwarded to the original destination
 7. **Headers**: Detection metadata is added to response headers
 
+WebSocket interception is enabled when `INTERCEPTED_WS_PATHS` is configured with one or more path prefixes. Client text and supported image payloads are extracted from WebSocket messages and evaluated via the same `/detect` backend endpoint. If a message is classified as blocked, it is dropped before forwarding.
+
 If the proxy cannot analyze an intercepted request, it follows a fail-closed policy and returns a local `403` error instead of forwarding unchecked content.
 
 ## Response Headers

@@ -67,3 +67,8 @@ INTERCEPTED_PATHS = _parse_list(
         "/completions",  # Generic completions
     ],
 )
+
+INTERCEPTED_WS_PATHS = _parse_list(
+    os.getenv("INTERCEPTED_WS_PATHS"),
+    [],
+)

@@ -43,7 +43,7 @@ def test_request_then_response_adds_detection_headers_to_forwarded_response(
         "risk_level": "low",
         "detected_fields": [{"field": "email"}],
     }
-    monkeypatch.setattr(guard, "_ask_backend", lambda text: result)
+    monkeypatch.setattr(guard, "ask_backend", lambda text: result)
 
     guard.request(flow)
 
@@ -65,7 +65,7 @@ def test_request_blocks_and_skips_upstream_response_processing(
     flow = make_flow({"messages": [{"role": "user", "content": "secret 123"}]})
     monkeypatch.setattr(
         guard,
-        "_ask_backend",
+        "ask_backend",
         lambda text: {
             "decision": "block",
             "risk_level": "high",
@@ -110,7 +110,7 @@ def test_request_with_images_uses_combined_backend_submission(
         calls.append((text, images))
         return {"decision": "allow", "risk_level": "low", "detected_fields": []}
 
-    monkeypatch.setattr(guard, "_ask_backend_with_text_and_files", fake_backend)
+    monkeypatch.setattr(guard, "ask_backend_with_text_and_files", fake_backend)
 
     guard.request(flow)
 
@@ -146,7 +146,7 @@ def test_request_for_non_intercepted_endpoint_bypasses_analysis(
         called = True
         return {"decision": "allow", "risk_level": "low", "detected_fields": []}
 
-    monkeypatch.setattr(guard, "_ask_backend", fake_backend)
+    monkeypatch.setattr(guard, "ask_backend", fake_backend)
 
     guard.request(flow)
 

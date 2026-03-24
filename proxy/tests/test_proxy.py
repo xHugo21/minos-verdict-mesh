@@ -47,7 +47,7 @@ def interceptor() -> LLMRequestGuard:
 def test_stringify_handles_nested_structures(interceptor: LLMRequestGuard):
     payload = ["alpha", 42, {"text": "nested"}, None]
 
-    assert interceptor._stringify(payload) == "alpha\n42\nnested"
+    assert interceptor.extractor.stringify(payload) == "alpha\n42\nnested"
 
 
 def test_extract_payload_text_prefers_chat_messages(
@@ -62,7 +62,7 @@ def test_extract_payload_text_prefers_chat_messages(
         "prompt": "fallback",
     }
 
-    text = interceptor._extract_payload_text(payload, "/v1/chat/completions")
+    text = interceptor.extractor.extract_payload_text(payload, "/v1/chat/completions")
 
     assert text == "hello\nworld"
 
@@ -72,7 +72,7 @@ def test_extract_payload_text_uses_prompt_for_non_chat_path(
 ):
     payload = {"prompt": {"text": "linear"}}
 
-    text = interceptor._extract_payload_text(payload, "/v1/completions")
+    text = interceptor.extractor.extract_payload_text(payload, "/v1/completions")
 
     assert text == "linear"
 
@@ -88,7 +88,7 @@ def test_detection_headers_include_detected_fields(
         ],
     }
 
-    headers = interceptor._detection_headers(result)
+    headers = interceptor.http_guard.detection_headers(result)
 
     assert headers["X-LLM-Guard-Risk-Level"] == "high"
     assert "password" in headers["X-LLM-Guard-Detected-Fields"]
@@ -96,9 +96,9 @@ def test_detection_headers_include_detected_fields(
 
 
 def test_should_block_uses_decision(interceptor: LLMRequestGuard):
-    assert interceptor._should_block({"decision": "block"})
-    assert not interceptor._should_block({"decision": "allow"})
-    assert not interceptor._should_block({"risk_level": "high"})
+    assert interceptor.http_guard.should_block({"decision": "block"})
+    assert not interceptor.http_guard.should_block({"decision": "allow"})
+    assert not interceptor.http_guard.should_block({"risk_level": "high"})
 
 
 def test_should_intercept_matches_configured_endpoints(
@@ -111,7 +111,7 @@ def test_should_intercept_matches_configured_endpoints(
     flow.request.host = "api.openai.com"
     flow.request.path = "/v1/chat/completions"
 
-    assert interceptor._should_intercept(flow)
+    assert interceptor.http_guard.should_intercept(flow)
 
 
 def test_should_intercept_ignores_non_post_requests(
@@ -124,7 +124,7 @@ def test_should_intercept_ignores_non_post_requests(
     flow.request.host = "api.openai.com"
     flow.request.path = "/v1/chat/completions"
 
-    assert not interceptor._should_intercept(flow)
+    assert not interceptor.http_guard.should_intercept(flow)
 
 
 def test_should_intercept_ignores_non_configured_hosts(
@@ -137,7 +137,7 @@ def test_should_intercept_ignores_non_configured_hosts(
     flow.request.host = "example.com"
     flow.request.path = "/v1/chat/completions"
 
-    assert not interceptor._should_intercept(flow)
+    assert not interceptor.http_guard.should_intercept(flow)
 
 
 def test_should_intercept_ignores_non_configured_paths(
@@ -150,11 +150,11 @@ def test_should_intercept_ignores_non_configured_paths(
     flow.request.host = "api.openai.com"
     flow.request.path = "/v1/models"
 
-    assert not interceptor._should_intercept(flow)
+    assert not interceptor.http_guard.should_intercept(flow)
 
 
 def test_ask_backend_handles_empty_text(interceptor: LLMRequestGuard):
-    result = interceptor._ask_backend("")
+    result = interceptor.ask_backend("")
 
     assert result is not None
     assert result["risk_level"] == "none"
@@ -179,7 +179,7 @@ def test_ask_backend_posts_to_configured_url(
         )
 
         interceptor_with_mode = LLMRequestGuard()
-        result = interceptor_with_mode._ask_backend("test text")
+        result = interceptor_with_mode.ask_backend("test text")
 
         call_args = mock_client.return_value.__enter__.return_value.post.call_args
         assert call_args[0][0] == mock_url
@@ -205,7 +205,7 @@ def test_ask_backend_adds_auth_header_when_configured(
             mock_response
         )
 
-        interceptor._ask_backend("test text")
+        interceptor.ask_backend("test text")
 
         call_args = mock_client.return_value.__enter__.return_value.post.call_args
         assert call_args[1]["headers"] == {"Authorization": "Bearer secret-token"}
@@ -225,7 +225,7 @@ def test_request_blocks_when_backend_is_unavailable(
     interceptor: LLMRequestGuard, monkeypatch: pytest.MonkeyPatch
 ):
     flow = make_flow(json.dumps({"messages": [{"role": "user", "content": "hello"}]}))
-    monkeypatch.setattr(interceptor, "_ask_backend", lambda text: None)
+    monkeypatch.setattr(interceptor, "ask_backend", lambda text: None)
 
     interceptor.request(flow)
 
@@ -243,7 +243,7 @@ def test_request_stores_detection_result_for_response_hook(
         "risk_level": "low",
         "detected_fields": [{"field": "email"}],
     }
-    monkeypatch.setattr(interceptor, "_ask_backend", lambda text: result)
+    monkeypatch.setattr(interceptor, "ask_backend", lambda text: result)
 
     interceptor.request(flow)
 
@@ -271,13 +271,14 @@ def test_should_intercept_matches_gemini_host_when_path_is_configured(
 ):
     interceptor.intercepted_hosts = ["generativelanguage.googleapis.com"]
     interceptor.intercepted_paths = ["/v1/chat/completions"]
+    interceptor._sync_engines()
 
     flow = make_flow(
         json.dumps({"contents": [{"parts": [{"text": "hello"}]}]}),
         url="https://generativelanguage.googleapis.com/v1/chat/completions",
     )
 
-    assert interceptor._should_intercept(flow)
+    assert interceptor.http_guard.should_intercept(flow)
 
 
 def test_build_mitmdump_argv_omits_proxyauth_by_default(
