@@ -5,8 +5,8 @@ from multiagent_firewall.detectors.dlp import (
     apply_checksum_validation,
     detect_keywords,
     detect_regex_patterns,
-    validate_ssn,
 )
+from multiagent_firewall.detectors.checksum_validators import validate_ssn
 
 
 def test_detect_keywords_default():
