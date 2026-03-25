@@ -291,6 +291,7 @@ The firewall supports editing detection rules in `multiagent-firewall/multiagent
 - `prompts`: Filenames for LLM detector and OCR prompts (stored in `prompts/`)
 - `regex_patterns`: regex-based DLP patterns, with optional keyword windows
 - `keywords`: keyword-based DLP phrases
+- `checksum_validators`: mapping from detected field name to checksum validator function
 - `ner_labels`: NER label → field mapping
 - `file_types`: Supported file type categories with extensions, MIME types, parsers, and limits
 - `file_validation`: Global file security settings (size limits, pixel limits, page limits)
@@ -391,6 +392,17 @@ The `field` property is useful when mapping multiple patterns to a single output
 "DATE_TEXT": {
     "field": "DATE",
     "regex": "\\b(?:January|February...)\\s+\\d{1,2}...\\b"
+}
+```
+
+#### Checksum Validator Configuration
+Checksum-backed validation is configured in `detection.json` under `checksum_validators`.
+Each key is a detected output field (for example, `SSN`) and each value is a validator function name or fully-qualified dotted path located under `multiagent_firewall/detectors/checksum_validators`. External validators can be implemented by referencing the package dotted route.
+
+```json
+"checksum_validators": {
+  "SSN": "validate_ssn",
+  "IBAN": "my_pkg.validators.validate_iban"
 }
 ```
 
