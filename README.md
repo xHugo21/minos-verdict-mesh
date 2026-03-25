@@ -62,7 +62,7 @@ Install [uv](https://docs.astral.sh/uv/#installation)
 | `backend` | `backend/.env` |
 | `proxy` | `proxy/.env` |
 | `extension` | `extension/src/config.js` |
-| `multiagent-firewall` | `multiagent-firewall/.env`, `multiagent-firewall/config/detection.json` and `multiagent-firewall/config/pipeline.json` |
+| `multiagent-firewall` | `multiagent-firewall/.env`, `multiagent-firewall/multiagent_firewall/config/detection.json` and `multiagent-firewall/multiagent_firewall/config/pipeline.json` |
 
 > [!NOTE]
 > All `.env` configuration files must be manually created. An `.env.example` of each is uploaded for reference.

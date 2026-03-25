@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import importlib
 import re
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
 
-from ..config.detection import REGEX_PATTERNS, KEYWORDS
+from ..config.detection import CHECKSUM_VALIDATORS, KEYWORDS, REGEX_PATTERNS
 
 try:
     import phonenumbers
@@ -36,34 +37,43 @@ def detect_keywords(
     return findings
 
 
-def validate_ssn(ssn: str) -> bool:
-    """Basic validation for US Social Security Numbers."""
-    ssn_clean = ssn.replace("-", "").replace(" ", "")
-
-    if not ssn_clean.isdigit():
-        return False
-    if len(ssn_clean) != 9:
-        return False
-
-    area = ssn_clean[:3]
-    group = ssn_clean[3:5]
-    serial = ssn_clean[5:]
-
-    if area == "000" or area == "666" or int(area) >= 900:
-        return False
-
-    if group == "00":
-        return False
-
-    if serial == "0000":
-        return False
-
-    return True
+_DEFAULT_VALIDATORS_MODULE = "multiagent_firewall.detectors.checksum_validators"
 
 
-_CHECKSUM_VALIDATORS = {
-    "SSN": validate_ssn,
-}
+def _resolve_checksum_validator(name: str) -> Callable[[str], bool] | None:
+    validator_name = name.strip()
+    if not validator_name:
+        return None
+
+    if "." in validator_name:
+        module_path, attr_name = validator_name.rsplit(".", 1)
+    else:
+        module_path, attr_name = _DEFAULT_VALIDATORS_MODULE, validator_name
+
+    try:
+        module = importlib.import_module(module_path)
+    except Exception:
+        return None
+
+    validator = getattr(module, attr_name, None)
+    if callable(validator):
+        return validator
+    return None
+
+
+def _load_checksum_validators() -> Dict[str, Any]:
+    loaded: Dict[str, Callable[[str], bool]] = {}
+    for field, validator_name in CHECKSUM_VALIDATORS.items():
+        if not isinstance(field, str) or not isinstance(validator_name, str):
+            continue
+        validator = _resolve_checksum_validator(validator_name)
+        if validator is None:
+            continue
+        loaded[field.strip().upper()] = validator
+    return loaded
+
+
+_CHECKSUM_VALIDATORS = _load_checksum_validators()
 
 
 def apply_checksum_validation(

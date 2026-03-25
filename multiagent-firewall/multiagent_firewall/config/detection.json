@@ -168,6 +168,9 @@
       "-----BEGIN DSA PRIVATE KEY-----"
     ]
   },
+  "checksum_validators": {
+    "SSN": "validate_ssn"
+  },
   "ner_labels": {
     "person": "FIRST_NAME",
     "first name": "FIRST_NAME",
