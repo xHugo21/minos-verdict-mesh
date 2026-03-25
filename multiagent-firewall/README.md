@@ -18,10 +18,14 @@ flowchart TD
     NeedsLLMOCR -->|No| Normalize
     LLMOCR --> Normalize
 
-    Normalize --> DLP[dlp_detector<br/>Regex, Keyword, Checksum]
+    Normalize --> Regex[regex_detector]
+    Normalize --> Keyword[keyword_detector]
+    Regex --> Checksum[checksum_validator<br/>for checksum-capable regex findings]
+    Keyword --> DLPMerge[merge_dlp]
+    Checksum --> DLPMerge
     Normalize --> NER[ner_detector<br/>GLiNER NER]
     Normalize --> CodeSim[code_similarity_detector<br/>Proprietary Code Detection]
-    DLP --> MergeDLP[merge_dlp_ner<br/>Merge detections]
+    DLPMerge --> MergeDLP[merge_dlp_ner<br/>Merge detections]
     NER --> MergeDLP
     CodeSim --> MergeDLP
     MergeDLP --> HasPreLLM{Any DLP/NER findings?}
@@ -60,7 +64,10 @@ flowchart TD
     style AnonymizeLLM fill:#f0e6ff,stroke:#333,color:#000
     style FinalAnonymize fill:#f0e6ff,stroke:#333,color:#000
     style LLM fill:#f0e6ff,stroke:#333,color:#000
-    style DLP fill:#e6ffe6,stroke:#333,color:#000
+    style Regex fill:#e6ffe6,stroke:#333,color:#000
+    style Keyword fill:#e6ffe6,stroke:#333,color:#000
+    style Checksum fill:#e6ffe6,stroke:#333,color:#000
+    style DLPMerge fill:#fff9e6,stroke:#333,color:#000
     style NER fill:#e6ffe6,stroke:#333,color:#000
     style CodeSim fill:#e6ffe6,stroke:#333,color:#000
     style Remediation fill:#ffe6e6,stroke:#333,color:#000

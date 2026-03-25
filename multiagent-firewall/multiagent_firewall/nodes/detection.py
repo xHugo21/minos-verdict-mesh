@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import asyncio
 from ..detectors import GlinerNERDetector, LiteLLMDetector, CodeSimilarityDetector
-from ..detectors.dlp import detect_checksums, detect_keywords, detect_regex_patterns
+from ..detectors.dlp import (
+    apply_checksum_validation,
+    detect_keywords,
+    detect_regex_patterns,
+)
 from ..config.detection import KEYWORDS, REGEX_PATTERNS
 from ..types import FieldList, GuardState
 from ..utils import append_error
@@ -132,7 +136,7 @@ async def run_dlp_detector(state: GuardState) -> GuardState:
     """
     Run DLP detection
 
-    Runs regex, keyword and checksum detectors
+    Runs regex and keyword detectors; checksum is applied as regex validation
     """
     text = state.get("normalized_text") or ""
     findings: FieldList = []
@@ -144,17 +148,16 @@ async def run_dlp_detector(state: GuardState) -> GuardState:
         except Exception as exc:
             return exc
 
-    # Run internal detectors in parallel
+    # Run independent detectors in parallel
     results = await asyncio.gather(
         _safe_run(detect_regex_patterns, text, REGEX_PATTERNS),
         _safe_run(detect_keywords, text, KEYWORDS),
-        _safe_run(detect_checksums, text),
     )
 
-    regex_res, keyword_res, checksum_res = results
+    regex_res, keyword_res = results
 
     if isinstance(regex_res, list):
-        findings.extend(regex_res)
+        findings.extend(apply_checksum_validation(regex_res))
     else:
         errors.append(f"Regex detector failed: {regex_res}")
 
@@ -162,11 +165,6 @@ async def run_dlp_detector(state: GuardState) -> GuardState:
         findings.extend(keyword_res)
     else:
         errors.append(f"Keyword detector failed: {keyword_res}")
-
-    if isinstance(checksum_res, list):
-        findings.extend(checksum_res)
-    else:
-        errors.append(f"Checksum detector failed: {checksum_res}")
 
     update: GuardState = {"dlp_fields": findings}
     if errors:

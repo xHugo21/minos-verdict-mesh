@@ -219,7 +219,7 @@ async def test_run_dlp_detector_with_keywords():
 
 @pytest.mark.asyncio
 async def test_run_dlp_detector_with_checksums():
-    """Test DLP detector with checksum validation"""
+    """Test DLP detector applies checksum validation to regex findings"""
     state: GuardState = {
         "normalized_text": "Card number: 4532015112830366",
         "warnings": [],
@@ -234,6 +234,21 @@ async def test_run_dlp_detector_with_checksums():
         f for f in dlp_fields if "dlp_checksum" in f.get("sources", [])
     ]
     assert len(checksum_findings) >= 1
+    assert all("dlp_regex" in f.get("sources", []) for f in checksum_findings)
+
+
+@pytest.mark.asyncio
+async def test_run_dlp_detector_filters_invalid_checksum_regex_match():
+    state: GuardState = {
+        "normalized_text": "Card number: 1234-5678-9012-3456",
+        "warnings": [],
+        "errors": [],
+    }
+
+    result = await run_dlp_detector(state)
+
+    dlp_fields = result.get("dlp_fields", [])
+    assert all(f.get("field") != "CREDIT_DEBIT_CARD" for f in dlp_fields)
 
 
 @pytest.mark.asyncio
