@@ -230,11 +230,7 @@ async def test_run_dlp_detector_with_checksums():
 
     assert "dlp_fields" in result
     dlp_fields = result.get("dlp_fields", [])
-    checksum_findings = [
-        f for f in dlp_fields if "dlp_checksum" in f.get("sources", [])
-    ]
-    assert len(checksum_findings) >= 1
-    assert all("dlp_regex" in f.get("sources", []) for f in checksum_findings)
+    assert all("dlp_checksum" not in f.get("sources", []) for f in dlp_fields)
 
 
 @pytest.mark.asyncio
@@ -248,7 +244,37 @@ async def test_run_dlp_detector_filters_invalid_checksum_regex_match():
     result = await run_dlp_detector(state)
 
     dlp_fields = result.get("dlp_fields", [])
-    assert all(f.get("field") != "CREDIT_DEBIT_CARD" for f in dlp_fields)
+    assert any(f.get("field") == "CREDIT_DEBIT_CARD" for f in dlp_fields)
+
+
+@pytest.mark.asyncio
+async def test_run_dlp_detector_filters_invalid_ssn_regex_match():
+    state: GuardState = {
+        "normalized_text": "SSN: 000-45-6789",
+        "warnings": [],
+        "errors": [],
+    }
+
+    result = await run_dlp_detector(state)
+
+    dlp_fields = result.get("dlp_fields", [])
+    assert all(f.get("field") != "SSN" for f in dlp_fields)
+
+
+@pytest.mark.asyncio
+async def test_run_dlp_detector_tags_valid_ssn_with_checksum_source():
+    state: GuardState = {
+        "normalized_text": "SSN: 123-45-6789",
+        "warnings": [],
+        "errors": [],
+    }
+
+    result = await run_dlp_detector(state)
+
+    dlp_fields = result.get("dlp_fields", [])
+    ssn_findings = [f for f in dlp_fields if f.get("field") == "SSN"]
+    assert len(ssn_findings) >= 1
+    assert all("dlp_checksum" in f.get("sources", []) for f in ssn_findings)
 
 
 @pytest.mark.asyncio

@@ -5,9 +5,7 @@ from multiagent_firewall.detectors.dlp import (
     apply_checksum_validation,
     detect_keywords,
     detect_regex_patterns,
-    luhn_checksum,
     validate_ssn,
-    validate_vin,
 )
 
 
@@ -50,25 +48,11 @@ def test_detect_keywords_empty_text():
     assert findings == []
 
 
-def test_luhn_checksum_valid():
-    assert luhn_checksum("4532015112830366") is True
-    assert luhn_checksum("5425233430109903") is True
-
-
-def test_luhn_checksum_invalid():
-    assert luhn_checksum("4532015112830367") is False
-    assert luhn_checksum("1234567890123456") is False
-
-
-def test_luhn_checksum_too_short():
-    assert luhn_checksum("123") is False
-
-
 def test_apply_checksum_validation_keeps_valid_checksum_fields():
     findings = [
         {
-            "field": "CREDIT_DEBIT_CARD",
-            "value": "4532-0151-1283-0366",
+            "field": "SSN",
+            "value": "123-45-6789",
             "sources": ["dlp_regex"],
         },
         {
@@ -81,17 +65,12 @@ def test_apply_checksum_validation_keeps_valid_checksum_fields():
     validated = apply_checksum_validation(findings)
 
     assert len(validated) == 2
-    card = next(item for item in validated if item["field"] == "CREDIT_DEBIT_CARD")
-    assert card["sources"] == ["dlp_regex", "dlp_checksum"]
+    ssn = next(item for item in validated if item["field"] == "SSN")
+    assert ssn["sources"] == ["dlp_regex", "dlp_checksum"]
 
 
 def test_apply_checksum_validation_removes_invalid_checksum_fields():
     findings = [
-        {
-            "field": "CREDIT_DEBIT_CARD",
-            "value": "1234-5678-9012-3456",
-            "sources": ["dlp_regex"],
-        },
         {
             "field": "SSN",
             "value": "000-45-6789",
@@ -107,7 +86,8 @@ def test_apply_checksum_validation_removes_invalid_checksum_fields():
     validated = apply_checksum_validation(findings)
 
     assert len(validated) == 1
-    assert validated[0]["field"] == "EMAIL"
+    fields = {item["field"] for item in validated}
+    assert fields == {"EMAIL"}
 
 
 def test_detect_regex_patterns_default():
@@ -275,23 +255,6 @@ def test_validate_ssn_invalid():
     assert validate_ssn("123-45-0000") is False  # Serial 0000
     assert validate_ssn("1234567890") is False  # Invalid length
     assert validate_ssn("12345678901") is False  # Invalid length
-
-
-def test_validate_vin_valid():
-    # Note: These are example VINs with valid check digits
-    assert validate_vin("1HGBH41JXMN109186") is True
-
-
-def test_validate_vin_invalid():
-    assert validate_vin("1HGBH41JXMN109187") is False  # Wrong check digit
-    assert validate_vin("1HGBH41IXMN109186") is False  # Contains 'I'
-    assert validate_vin("1HGBH41OXMN109186") is False  # Contains 'O'
-    assert validate_vin("12345") is False  # Too short
-
-
-# ============================================================================
-# Extended Checksum Detection Tests
-# ============================================================================
 
 
 # ============================================================================

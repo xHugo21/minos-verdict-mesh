@@ -36,23 +36,6 @@ def detect_keywords(
     return findings
 
 
-def luhn_checksum(card_number: str) -> bool:
-    """Validate credit card numbers using the Luhn algorithm."""
-    digits = [int(d) for d in card_number if d.isdigit()]
-    if len(digits) < 13:
-        return False
-
-    checksum = 0
-    for i, digit in enumerate(reversed(digits)):
-        if i % 2 == 1:
-            digit *= 2
-            if digit > 9:
-                digit -= 9
-        checksum += digit
-
-    return checksum % 10 == 0
-
-
 def validate_ssn(ssn: str) -> bool:
     """Basic validation for US Social Security Numbers."""
     ssn_clean = ssn.replace("-", "").replace(" ", "")
@@ -78,62 +61,8 @@ def validate_ssn(ssn: str) -> bool:
     return True
 
 
-def validate_vin(vin: str) -> bool:
-    """Validate Vehicle Identification Number using check digit."""
-    vin = vin.upper().replace(" ", "")
-
-    if len(vin) != 17:
-        return False
-
-    if any(char in vin for char in "IOQ"):
-        return False
-
-    transliteration = {
-        "A": 1,
-        "B": 2,
-        "C": 3,
-        "D": 4,
-        "E": 5,
-        "F": 6,
-        "G": 7,
-        "H": 8,
-        "J": 1,
-        "K": 2,
-        "L": 3,
-        "M": 4,
-        "N": 5,
-        "P": 7,
-        "R": 9,
-        "S": 2,
-        "T": 3,
-        "U": 4,
-        "V": 5,
-        "W": 6,
-        "X": 7,
-        "Y": 8,
-        "Z": 9,
-    }
-
-    weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2]
-
-    total = 0
-    for i, char in enumerate(vin):
-        if char.isdigit():
-            value = int(char)
-        else:
-            value = transliteration.get(char, 0)
-        total += value * weights[i]
-
-    check_digit = total % 11
-    check_char = "X" if check_digit == 10 else str(check_digit)
-
-    return vin[8] == check_char
-
-
 _CHECKSUM_VALIDATORS = {
-    "CREDIT_DEBIT_CARD": luhn_checksum,
     "SSN": validate_ssn,
-    "VEHICLE_IDENTIFIER": validate_vin,
 }
 
 
@@ -157,11 +86,12 @@ def apply_checksum_validation(
         value = str(item.get("value") or "")
 
         validator = _CHECKSUM_VALIDATORS.get(field)
-        if validator is not None and not validator(value):
+        checksum_passed = validator(value) if validator is not None else None
+        if validator is not None and checksum_passed is False:
             continue
 
         sources = _collect_sources(item)
-        if validator is not None and "dlp_checksum" not in sources:
+        if checksum_passed and "dlp_checksum" not in sources:
             sources.append("dlp_checksum")
         item["sources"] = sources
         validated.append(item)
