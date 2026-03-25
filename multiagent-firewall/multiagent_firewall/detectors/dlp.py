@@ -36,45 +36,6 @@ def detect_keywords(
     return findings
 
 
-def luhn_checksum(card_number: str) -> bool:
-    """Validate credit card numbers using the Luhn algorithm."""
-    digits = [int(d) for d in card_number if d.isdigit()]
-    if len(digits) < 13:
-        return False
-
-    checksum = 0
-    for i, digit in enumerate(reversed(digits)):
-        if i % 2 == 1:
-            digit *= 2
-            if digit > 9:
-                digit -= 9
-        checksum += digit
-
-    return checksum % 10 == 0
-
-
-def validate_iban(iban: str) -> bool:
-    """Validate IBAN using the mod-97 algorithm."""
-    iban = iban.replace(" ", "").replace("-", "").upper()
-
-    if len(iban) < 15 or len(iban) > 34:
-        return False
-
-    if not (iban[:2].isalpha() and iban[2:4].isdigit()):
-        return False
-
-    rearranged = iban[4:] + iban[:4]
-
-    numeric_string = ""
-    for char in rearranged:
-        if char.isdigit():
-            numeric_string += char
-        else:
-            numeric_string += str(ord(char) - ord("A") + 10)
-
-    return int(numeric_string) % 97 == 1
-
-
 def validate_ssn(ssn: str) -> bool:
     """Basic validation for US Social Security Numbers."""
     ssn_clean = ssn.replace("-", "").replace(" ", "")
@@ -82,7 +43,7 @@ def validate_ssn(ssn: str) -> bool:
     if not ssn_clean.isdigit():
         return False
     if len(ssn_clean) != 9:
-        return 9 < len(ssn_clean) <= 11
+        return False
 
     area = ssn_clean[:3]
     group = ssn_clean[3:5]
@@ -100,126 +61,42 @@ def validate_ssn(ssn: str) -> bool:
     return True
 
 
-def validate_vin(vin: str) -> bool:
-    """Validate Vehicle Identification Number using check digit."""
-    vin = vin.upper().replace(" ", "")
-
-    if len(vin) != 17:
-        return False
-
-    if any(char in vin for char in "IOQ"):
-        return False
-
-    transliteration = {
-        "A": 1,
-        "B": 2,
-        "C": 3,
-        "D": 4,
-        "E": 5,
-        "F": 6,
-        "G": 7,
-        "H": 8,
-        "J": 1,
-        "K": 2,
-        "L": 3,
-        "M": 4,
-        "N": 5,
-        "P": 7,
-        "R": 9,
-        "S": 2,
-        "T": 3,
-        "U": 4,
-        "V": 5,
-        "W": 6,
-        "X": 7,
-        "Y": 8,
-        "Z": 9,
-    }
-
-    weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2]
-
-    total = 0
-    for i, char in enumerate(vin):
-        if char.isdigit():
-            value = int(char)
-        else:
-            value = transliteration.get(char, 0)
-        total += value * weights[i]
-
-    check_digit = total % 11
-    check_char = "X" if check_digit == 10 else str(check_digit)
-
-    return vin[8] == check_char
+_CHECKSUM_VALIDATORS = {
+    "SSN": validate_ssn,
+}
 
 
-def detect_checksums(text: str) -> List[Dict[str, Any]]:
-    """Detect sensitive data using checksum validation algorithms.
+def apply_checksum_validation(
+    findings: Sequence[Mapping[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Validate checksum-capable regex findings and enrich accepted matches.
 
-    This function reuses patterns from REGEX_PATTERNS and applies additional
-    checksum validation to reduce false positives.
+    Findings for checksum-backed fields are kept only when they pass validation.
+    Accepted findings receive the `dlp_checksum` source in addition to
+    existing detector sources.
     """
-    findings: List[Dict[str, Any]] = []
+    validated: List[Dict[str, Any]] = []
 
-    # Credit card detection (Luhn algorithm)
-    card_pattern = _extract_regex_pattern(REGEX_PATTERNS, "CREDIT_DEBIT_CARD")
-    if card_pattern:
-        potential_cards = re.findall(card_pattern, text)
-        for card in potential_cards:
-            card_clean = card.replace(" ", "").replace("-", "")
-            if luhn_checksum(card_clean):
-                findings.append(
-                    {
-                        "field": "CREDIT_DEBIT_CARD",
-                        "value": card,
-                        "sources": ["dlp_checksum"],
-                    }
-                )
+    for raw_item in findings:
+        if not isinstance(raw_item, Mapping):
+            continue
 
-    # IBAN detection (mod-97 algorithm)
-    iban_pattern = _extract_regex_pattern(REGEX_PATTERNS, "IBAN")
-    if iban_pattern:
-        potential_ibans = re.findall(iban_pattern, text)
-        for iban in potential_ibans:
-            # Extract just the IBAN part (remove any captured groups)
-            iban_str = iban[0] if isinstance(iban, tuple) else iban
-            if validate_iban(iban_str):
-                findings.append(
-                    {
-                        "field": "IBAN",
-                        "value": iban_str,
-                        "sources": ["dlp_checksum"],
-                    }
-                )
+        item = dict(raw_item)
+        field = str(item.get("field") or "").strip().upper()
+        value = str(item.get("value") or "")
 
-    # SSN detection (validation rules)
-    ssn_pattern = _extract_regex_pattern(REGEX_PATTERNS, "SSN")
-    if ssn_pattern:
-        potential_ssns = re.findall(ssn_pattern, text)
-        for ssn in potential_ssns:
-            if validate_ssn(ssn):
-                findings.append(
-                    {
-                        "field": "SSN",
-                        "value": ssn,
-                        "sources": ["dlp_checksum"],
-                    }
-                )
+        validator = _CHECKSUM_VALIDATORS.get(field)
+        checksum_passed = validator(value) if validator is not None else None
+        if validator is not None and checksum_passed is False:
+            continue
 
-    # VIN detection (check digit algorithm)
-    vin_pattern = _extract_regex_pattern(REGEX_PATTERNS, "VEHICLE_IDENTIFIER")
-    if vin_pattern:
-        potential_vins = re.findall(vin_pattern, text.upper())
-        for vin in potential_vins:
-            if validate_vin(vin):
-                findings.append(
-                    {
-                        "field": "VEHICLE_IDENTIFIER",
-                        "value": vin,
-                        "sources": ["dlp_checksum"],
-                    }
-                )
+        sources = _collect_sources(item)
+        if checksum_passed and "dlp_checksum" not in sources:
+            sources.append("dlp_checksum")
+        item["sources"] = sources
+        validated.append(item)
 
-    return findings
+    return validated
 
 
 def detect_regex_patterns(
@@ -287,21 +164,6 @@ def detect_regex_patterns(
     return findings
 
 
-def _extract_regex_pattern(
-    patterns: Mapping[str, object], field_name: str
-) -> str | None:
-    entry = patterns.get(field_name)
-    if entry is None:
-        return None
-    if isinstance(entry, str):
-        return entry
-    if isinstance(entry, Mapping):
-        regex = entry.get("regex") or entry.get("pattern")
-        if isinstance(regex, str):
-            return regex
-    return None
-
-
 def _normalize_regex_rule(field_name: str, entry: object) -> Dict[str, Any]:
     if isinstance(entry, str):
         return {
@@ -349,6 +211,27 @@ def _detect_with_phonenumbers(
         pass
 
     return findings
+
+
+def _collect_sources(item: Mapping[str, Any]) -> List[str]:
+    raw_sources = item.get("sources")
+    if raw_sources is None:
+        raw_sources = item.get("source")
+    if isinstance(raw_sources, list):
+        source_items = raw_sources
+    elif raw_sources is None:
+        source_items = []
+    else:
+        source_items = [raw_sources]
+
+    normalized: List[str] = []
+    for source in source_items:
+        if not isinstance(source, str):
+            continue
+        cleaned = source.strip()
+        if cleaned and cleaned not in normalized:
+            normalized.append(cleaned)
+    return normalized
 
 
 def _extract_match_value(match: re.Match[str]) -> str:
@@ -417,4 +300,8 @@ def _window_has_keyword(window_text: str, matchers: List[Tuple[str, object]]) ->
     return False
 
 
-__all__ = ["detect_keywords", "detect_checksums", "detect_regex_patterns"]
+__all__ = [
+    "detect_keywords",
+    "detect_regex_patterns",
+    "apply_checksum_validation",
+]

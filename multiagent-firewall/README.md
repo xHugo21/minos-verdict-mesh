@@ -18,7 +18,7 @@ flowchart TD
     NeedsLLMOCR -->|No| Normalize
     LLMOCR --> Normalize
 
-    Normalize --> DLP[dlp_detector<br/>Regex, Keyword, Checksum]
+    Normalize --> DLP[dlp_detector<br/>(regex + checksum) + keyword validation]
     Normalize --> NER[ner_detector<br/>GLiNER NER]
     Normalize --> CodeSim[code_similarity_detector<br/>Proprietary Code Detection]
     DLP --> MergeDLP[merge_dlp_ner<br/>Merge detections]

@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import pytest
 from multiagent_firewall.detectors.dlp import (
-    detect_checksums,
+    apply_checksum_validation,
     detect_keywords,
     detect_regex_patterns,
-    luhn_checksum,
-    validate_iban,
     validate_ssn,
-    validate_vin,
 )
 
 
@@ -51,47 +48,46 @@ def test_detect_keywords_empty_text():
     assert findings == []
 
 
-def test_luhn_checksum_valid():
-    assert luhn_checksum("4532015112830366") is True
-    assert luhn_checksum("5425233430109903") is True
+def test_apply_checksum_validation_keeps_valid_checksum_fields():
+    findings = [
+        {
+            "field": "SSN",
+            "value": "123-45-6789",
+            "sources": ["dlp_regex"],
+        },
+        {
+            "field": "EMAIL",
+            "value": "a@example.com",
+            "sources": ["dlp_regex"],
+        },
+    ]
+
+    validated = apply_checksum_validation(findings)
+
+    assert len(validated) == 2
+    ssn = next(item for item in validated if item["field"] == "SSN")
+    assert ssn["sources"] == ["dlp_regex", "dlp_checksum"]
 
 
-def test_luhn_checksum_invalid():
-    assert luhn_checksum("4532015112830367") is False
-    assert luhn_checksum("1234567890123456") is False
+def test_apply_checksum_validation_removes_invalid_checksum_fields():
+    findings = [
+        {
+            "field": "SSN",
+            "value": "000-45-6789",
+            "sources": ["dlp_regex"],
+        },
+        {
+            "field": "EMAIL",
+            "value": "a@example.com",
+            "sources": ["dlp_regex"],
+        },
+    ]
 
+    validated = apply_checksum_validation(findings)
 
-def test_luhn_checksum_too_short():
-    assert luhn_checksum("123") is False
-
-
-def test_detect_checksums_valid_card():
-    text = "My card number is 4532015112830366"
-    findings = detect_checksums(text)
-
-    assert len(findings) == 1
-    assert findings[0]["field"] == "CREDIT_DEBIT_CARD"
-    assert findings[0]["value"] == "4532015112830366"
-    assert findings[0]["sources"] == ["dlp_checksum"]
-
-
-def test_detect_checksums_invalid_card():
-    text = "Invalid card: 1234567890123456"
-    findings = detect_checksums(text)
-
-    assert len(findings) == 0
-
-
-def test_detect_checksums_multiple_cards():
-    text = "Cards: 4532015112830366 and 5425233430109903"
-    findings = detect_checksums(text)
-
-    assert len(findings) == 2
-
-
-def test_detect_checksums_empty_text():
-    findings = detect_checksums("")
-    assert findings == []
+    assert len(validated) == 1
+    fields = {item["field"] for item in validated}
+    assert fields == {"EMAIL"}
 
 
 def test_detect_regex_patterns_default():
@@ -245,18 +241,6 @@ def test_detect_keywords_ignores_generic_terms():
 # ============================================================================
 
 
-def test_validate_iban_valid():
-    assert validate_iban("GB82WEST12345698765432") is True
-    assert validate_iban("DE89370400440532013000") is True
-    assert validate_iban("FR1420041010050500013M02606") is True
-
-
-def test_validate_iban_invalid():
-    assert validate_iban("GB82WEST12345698765433") is False  # Wrong check digits
-    assert validate_iban("XX123456789") is False  # Too short
-    assert validate_iban("1234567890") is False  # Wrong format
-
-
 def test_validate_ssn_valid():
     assert validate_ssn("123-45-6789") is True
     assert validate_ssn("123 45 6789") is True
@@ -269,66 +253,8 @@ def test_validate_ssn_invalid():
     assert validate_ssn("900-45-6789") is False  # Area 900+
     assert validate_ssn("123-00-6789") is False  # Group 00
     assert validate_ssn("123-45-0000") is False  # Serial 0000
-
-
-def test_validate_vin_valid():
-    # Note: These are example VINs with valid check digits
-    assert validate_vin("1HGBH41JXMN109186") is True
-
-
-def test_validate_vin_invalid():
-    assert validate_vin("1HGBH41JXMN109187") is False  # Wrong check digit
-    assert validate_vin("1HGBH41IXMN109186") is False  # Contains 'I'
-    assert validate_vin("1HGBH41OXMN109186") is False  # Contains 'O'
-    assert validate_vin("12345") is False  # Too short
-
-
-# ============================================================================
-# Extended Checksum Detection Tests
-# ============================================================================
-
-
-def test_detect_checksums_ssn():
-    text = "SSN: 123-45-6789"
-    findings = detect_checksums(text)
-
-    ssn_findings = [f for f in findings if f["field"] == "SSN"]
-    assert len(ssn_findings) == 1
-    assert ssn_findings[0]["sources"] == ["dlp_checksum"]
-
-
-def test_detect_checksums_vin():
-    text = "Vehicle VIN: 1HGBH41JXMN109186"
-    findings = detect_checksums(text)
-
-    vin_findings = [f for f in findings if f["field"] == "VEHICLE_IDENTIFIER"]
-    assert len(vin_findings) == 1
-    assert vin_findings[0]["sources"] == ["dlp_checksum"]
-
-
-def test_detect_checksums_mixed():
-    text = """
-    Card: 4532015112830366
-    SSN: 123-45-6789
-    """
-    findings = detect_checksums(text)
-
-    assert len(findings) >= 2
-    field_names = [f["field"] for f in findings]
-    assert "CREDIT_DEBIT_CARD" in field_names
-    assert "SSN" in field_names
-
-
-def test_detect_checksums_invalid_mixed():
-    text = """
-    Invalid card: 1234567890123456
-    Invalid IBAN: GB82WEST12345698765433
-    Invalid SSN: 000-45-6789
-    """
-    findings = detect_checksums(text)
-
-    # Should not detect invalid data
-    assert len(findings) == 0
+    assert validate_ssn("1234567890") is False  # Invalid length
+    assert validate_ssn("12345678901") is False  # Invalid length
 
 
 # ============================================================================
@@ -347,14 +273,14 @@ def test_integration_high_risk_data():
 
     keyword_findings = detect_keywords(text)
     regex_findings = detect_regex_patterns(text)
-    checksum_findings = detect_checksums(text)
+    validated_regex_findings = apply_checksum_validation(regex_findings)
 
     # Should detect multiple high-risk fields
-    all_findings = keyword_findings + regex_findings + checksum_findings
+    all_findings = keyword_findings + validated_regex_findings
     field_names = [f["field"] for f in all_findings]
 
     assert "PASSWORD" in field_names
-    # Credit card and SSN should be detected by both regex and checksum
+    # Credit card and SSN should remain detectable after checksum validation
     assert "CREDIT_DEBIT_CARD" in field_names
     assert "SSN" in field_names
 
